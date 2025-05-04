@@ -282,3 +282,17 @@ button {
       margin-top: 20px;
     }
   }
+
+  /* Force long email text to wrap on all screen sizes */
+.email-box {
+    width: 100%;            /* ensure it fills the container */
+    box-sizing: border-box; /* include padding in width */
+  }
+  
+  .email-box pre {
+    /* override any pre defaults */
+    white-space: pre-wrap !important;
+    word-wrap: break-word;      /* legacy name */
+    overflow-wrap: break-word;  /* standard */
+    word-break: break-word;     /* aggressively break long words */
+  }

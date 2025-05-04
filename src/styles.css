@@ -223,11 +223,11 @@ button {
     align-items: center;
   }
   
-  /* Wrap the selects in a form container that’s centered & constrained */
   .dem-form {
-    width: 100%;
-    max-width: 600px;
-    margin: 0 auto;
+    /* ensure the form wrapper actually sizes to its content */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   
   /* Two-column grid for the four dropdowns */

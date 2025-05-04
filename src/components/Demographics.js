@@ -14,7 +14,7 @@ export default function Demographics({ onNext }) {
 
   const handleChange = field => e =>
     setData(prev => ({ ...prev, [field]: e.target.value }));
-
+  
   const handleSubmit = async e => {
     e.preventDefault();
     const { age, gender, education, location } = data;
@@ -53,6 +53,7 @@ export default function Demographics({ onNext }) {
         <button
           type="submit"
           className="dem-next-button"
+          onClick={handleSubmit}
         >
           Next
         </button>

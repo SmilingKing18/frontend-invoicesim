@@ -17,6 +17,7 @@ export default function Demographics({ onNext }) {
   
   const handleSubmit = async e => {
     e.preventDefault();
+    console.log('🔔 handleSubmit fired, data:', data);
     const { age, gender, education, location } = data;
     if (!age || !gender || !education || !location) return;
     const res = await API.post('/user', data);

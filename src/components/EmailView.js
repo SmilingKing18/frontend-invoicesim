@@ -182,4 +182,3 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
       </div>
     );
   }
-  ```

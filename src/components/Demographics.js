@@ -26,6 +26,7 @@ export default function Demographics({ onNext }) {
   return (
     <div className="panel demographics">
       <h2>Demographics</h2>
+
       <form className="dem-form" onSubmit={handleSubmit}>
         <div className="dem-grid">
           <select value={data.age} onChange={handleChange('age')} required>
@@ -49,7 +50,10 @@ export default function Demographics({ onNext }) {
           </select>
         </div>
 
-        <button type="submit" className="dem-next-button">
+        <button
+          type="submit"
+          className="dem-next-button"
+        >
           Next
         </button>
       </form>

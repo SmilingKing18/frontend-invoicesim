@@ -1,16 +1,29 @@
 import React from 'react';
+
 export default function Rules({ onNext }) {
   return (
     <div className="panel">
       <h2>THE RULES</h2>
       <div className="rules-box">
-        <p>You start with 1000€.</p>
-        <p>4 emails per week for 3 weeks.</p>
-        <p>Each email asks to pay part of an invoice (amount exceeds budget if you pay all).</p>
-        <p>At bottom: "Pay now" or "Wait a week".</p>
-        <p>After each: questionnaire on urgency, arousal, persuasion, trust (1-5).</p>
-        <p>Week 2 & 3 adapt based on prior payments.</p>
-        <p>Final questionnaire at end.</p>
+        <p>You start with 1000&nbsp;€.</p>
+        <p>4 invoices per week for 3 weeks.</p>
+        <p>
+          Invoice amounts rise each week, and your budget will not cover
+          all four—so you can only pay ~2–3 per week.
+        </p>
+        <p>
+          At the bottom of each invoice: “Pay now” (deducts from your budget)
+          or “Wait a week.”
+        </p>
+        <p>
+          After each choice: questionnaire on urgency, arousal, persuasion,
+          and trust (scale of 1–5).
+        </p>
+        <p>
+          Weeks 2 &amp; 3 use new invoice amounts and adapt based on your
+          prior payments.
+        </p>
+        <p>Final questionnaire at the very end.</p>
       </div>
       <button onClick={onNext}>Start</button>
     </div>

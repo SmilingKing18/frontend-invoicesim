@@ -3,6 +3,7 @@ import Demographics from './components/Demographics';
 import Rules from './components/Rules';
 import EmailView from './components/EmailView';
 import FinalQuestionnaire from './components/FinalQuestionnaire';
+import './styles.css';
 
 function App() {
   const [stage, setStage] = useState('demographics');
@@ -19,6 +20,7 @@ function App() {
     setStage('emails');
   };
 
+  // Deduct on pay
   const handlePayment = amount => {
     setBudget(prev => prev - amount);
   };
@@ -45,6 +47,7 @@ function App() {
           <EmailView
             userId={userId}
             week={week}
+            budget={budget}
             onPayment={handlePayment}
             onWeekComplete={handleWeekComplete}
           />

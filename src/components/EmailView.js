@@ -34,13 +34,25 @@ const PRINCIPLES = {
   ]
 };
 
-// Order and amounts
-const PRINCIPLES_LIST = ['loss aversion', 'scarcity', 'social proof', 'urgency'];
-const AMOUNTS = [700, 800, 900, 950];
-
-export default function EmailView({
+// 3) Order of principles per invoice slot
+const PRINCIPLES_LIST = [
+    'loss aversion',
+    'scarcity',
+    'social proof',
+    'urgency'
+  ];
+  
+  // 4) Amounts matrix: [ [w1-slot1...], [w2-slot1...], [w3-slot1...] ]
+  const AMOUNTS = [
+    [700,  800,  900,  950],  // Week 1
+    [750,  820,  920,  970],  // Week 2
+    [800,  850,  950,  990]   // Week 3
+  ];
+  
+  export default function EmailView({
     userId,
     week,
+    budget,
     onPayment,
     onWeekComplete
   }) {
@@ -51,7 +63,7 @@ export default function EmailView({
     const [stage, setStage] = useState('view');
     const [dueDateStr, setDueDateStr] = useState('');
   
-    // On week change, reset everything
+    // Reset whenever the week changes
     useEffect(() => {
       setResponses(COMPANIES.map(() => ({ choice: null, answered: false })));
       setSelectedIndex(0);
@@ -61,47 +73,49 @@ export default function EmailView({
       setDueDateStr(d.toLocaleDateString());
     }, [week]);
   
-    const formatText = (template, vars) =>
-      template
-        .replace(/{name}/g, vars.name)
+    // Replace placeholders in the template
+    const formatText = (tpl, vars) =>
+      tpl
+        .replace(/{name}/g,      vars.name)
         .replace(/{invoice_id}/g, vars.invoice_id)
-        .replace(/{amount}/g, vars.amount.toFixed(2))
-        .replace(/{due_date}/g, vars.due_date)
-        .replace(/{company}/g, vars.company);
+        .replace(/{amount}/g,    vars.amount.toFixed(2))
+        .replace(/{due_date}/g,  vars.due_date)
+        .replace(/{company}/g,   vars.company);
   
     const handleChoice = async choice => {
       const principle = PRINCIPLES_LIST[selectedIndex];
-      const amount = AMOUNTS[selectedIndex];
-      const company = COMPANIES[selectedIndex];
+      const amount    = AMOUNTS[week - 1][selectedIndex];
+      const company   = COMPANIES[selectedIndex];
       const invoiceId = `${week}-${selectedIndex + 1}`;
-      const template = PRINCIPLES[principle][week - 1];
-      const text = formatText(template, {
-        name: 'Valued',
+      const template  = PRINCIPLES[principle][week - 1];
+      const emailText = formatText(template, {
+        name:       'Valued',
         invoice_id: invoiceId,
         amount,
-        due_date: dueDateStr,
-        company: company.name,
+        due_date:   dueDateStr,
+        company:    company.name
       });
   
-      // **Deduct** if they paid
+      // Deduct from budget if they pay
       if (choice === 'pay') {
         onPayment(amount);
       }
   
+      // Persist record (backend will compute `order`)
       await API.post('/email', {
-        user: userId,
+        user:           userId,
         week,
-        emailIndex: selectedIndex,
-        behaviorType: principle,
+        emailIndex:     selectedIndex,
+        behaviorType:   principle,
         amount,
         choice,
-        timestamp: new Date(),
-        emailText: text,
-        companyLogo: company.logo_url,
+        timestamp:      new Date(),
+        emailText,
+        companyLogo:    company.logo_url,
         companyAddress: company.address,
       });
   
-      // mark answered=false so questionnaire appears
+      // Show questionnaire next
       const copy = [...responses];
       copy[selectedIndex] = { choice, answered: false };
       setResponses(copy);
@@ -110,10 +124,10 @@ export default function EmailView({
   
     const handleQuestionnaire = async answers => {
       await API.post('/response', {
-        user: userId,
+        user:       userId,
         week,
         emailIndex: selectedIndex,
-        questions: answers,
+        questions:  answers
       });
   
       const copy = [...responses];
@@ -121,26 +135,26 @@ export default function EmailView({
       setResponses(copy);
       setStage('view');
   
-      const nextUnanswered = copy.findIndex(r => !r.answered);
-      if (nextUnanswered !== -1) {
-        setSelectedIndex(nextUnanswered);
+      // Advance to next unanswered email or finish the week
+      const next = copy.findIndex(r => !r.answered);
+      if (next >= 0) {
+        setSelectedIndex(next);
       } else {
         onWeekComplete();
       }
     };
   
-    // prepare display
-    const company = COMPANIES[selectedIndex];
+    // Prepare display variables
+    const company   = COMPANIES[selectedIndex];
+    const amount    = AMOUNTS[week - 1][selectedIndex];
     const principle = PRINCIPLES_LIST[selectedIndex];
-    const amount = AMOUNTS[selectedIndex];
-    const invoiceId = `${week}-${selectedIndex + 1}`;
-    const rawTpl = PRINCIPLES[principle][week - 1];
+    const rawTpl    = PRINCIPLES[principle][week - 1];
     const emailText = formatText(rawTpl, {
-      name: 'Valued',
-      invoice_id: invoiceId,
+      name:       'Valued',
+      invoice_id: `${week}-${selectedIndex + 1}`,
       amount,
-      due_date: dueDateStr,
-      company: company.name,
+      due_date:   dueDateStr,
+      company:    company.name,
     });
   
     return (
@@ -161,11 +175,7 @@ export default function EmailView({
                 }
               }}
             >
-              <img
-                src={c.logo_url}
-                alt=""
-                className="sidebar-logo"
-              />
+              <img src={c.logo_url} alt="" className="sidebar-logo" />
               <div>Email {i + 1}</div>
             </div>
           ))}
@@ -175,11 +185,7 @@ export default function EmailView({
           {stage === 'view' ? (
             <>
               <header className="email-header">
-                <img
-                  src={company.logo_url}
-                  alt=""
-                  className="company-logo"
-                />
+                <img src={company.logo_url} alt="" className="company-logo" />
                 <div>
                   <h3>{company.name}</h3>
                   <p>{company.address}</p>
@@ -191,7 +197,10 @@ export default function EmailView({
               </article>
   
               <div className="btn-row">
-                <button onClick={() => handleChoice('pay')}>
+                <button
+                  onClick={() => handleChoice('pay')}
+                  disabled={amount > budget}
+                >
                   Pay now
                 </button>
                 <button onClick={() => handleChoice('wait')}>

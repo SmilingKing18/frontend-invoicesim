@@ -20,13 +20,14 @@ function App() {
     setStage('emails');
   };
 
-  // Deduct on pay
   const handlePayment = amount => {
     setBudget(prev => prev - amount);
   };
 
   const handleWeekComplete = () => {
     if (week < 3) {
+      // roll over leftover + new 1000€
+      setBudget(prev => prev + 1000);
       setWeek(week + 1);
     } else {
       setStage('final');
@@ -42,7 +43,7 @@ function App() {
       {stage === 'emails' && (
         <>
           <div className="budget-display">
-            Total Money left: {budget}€
+            Week: {week}  |  Total Money left: {budget} €
           </div>
           <EmailView
             userId={userId}
@@ -53,9 +54,7 @@ function App() {
           />
         </>
       )}
-      {stage === 'final' && (
-        <FinalQuestionnaire userId={userId} />
-      )}
+      {stage === 'final' && <FinalQuestionnaire userId={userId} />}
     </div>
   );
 }

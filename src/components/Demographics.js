@@ -19,62 +19,65 @@ export default function Demographics({ onNext }) {
   const handleChange = field => e =>
     setData(prev => ({ ...prev, [field]: e.target.value }));
 
-  const handleSubmit = async e => {
-    // preventDefault only if called via form submit
-    if (e && e.preventDefault) e.preventDefault();
-    console.log('🔔 Demographics handleSubmit fired with:', data);
-
+  const handleSubmit = async () => {
+    console.log('🔔 Demographics handleSubmit:', data);
     const { age, gender, education, location } = data;
     if (!age || !gender || !education || !location) {
-      console.warn('⚠️ Missing demographic fields, not submitting.');
+      alert('Please complete all fields before continuing.');
       return;
     }
-
     try {
       const res = await API.post('/user', data);
-      console.log('✅ User created with ID:', res.data.userId);
+      console.log('✅ Created user', res.data);
       onNext(res.data.userId);
     } catch (err) {
-      console.error('❌ API error, advancing anyway:', err);
-      onNext(); // fallback advance
+      console.error('❌ Error creating user, advancing anyway', err);
+      onNext();
     }
   };
+
+  const allChosen = data.age && data.gender && data.education && data.location;
 
   return (
     <div className="panel demographics">
       <h2>Demographics</h2>
+      <div className="dem-grid">
+        <select value={data.age} onChange={handleChange('age')}>
+          <option value="" disabled>Age range</option>
+          {ageRanges.map(r => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
 
-      <form className="dem-form" onSubmit={handleSubmit}>
-        <div className="dem-grid">
-          <select value={data.age} onChange={handleChange('age')} required>
-            <option value="" disabled>Age range</option>
-            {ageRanges.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+        <select value={data.gender} onChange={handleChange('gender')}>
+          <option value="" disabled>Gender</option>
+          {genders.map(g => (
+            <option key={g} value={g}>{g}</option>
+          ))}
+        </select>
 
-          <select value={data.gender} onChange={handleChange('gender')} required>
-            <option value="" disabled>Gender</option>
-            {genders.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
+        <select value={data.education} onChange={handleChange('education')}>
+          <option value="" disabled>Education</option>
+          {educations.map(ed => (
+            <option key={ed} value={ed}>{ed}</option>
+          ))}
+        </select>
 
-          <select value={data.education} onChange={handleChange('education')} required>
-            <option value="" disabled>Education</option>
-            {educations.map(ed => <option key={ed} value={ed}>{ed}</option>)}
-          </select>
+        <select value={data.location} onChange={handleChange('location')}>
+          <option value="" disabled>Location</option>
+          {locations.map(l => (
+            <option key={l} value={l}>{l}</option>
+          ))}
+        </select>
+      </div>
 
-          <select value={data.location} onChange={handleChange('location')} required>
-            <option value="" disabled>Location</option>
-            {locations.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-        </div>
-
-        <button
-          type="button"
-          className="dem-next-button"
-          onClick={handleSubmit}
-        >
-          Next
-        </button>
-      </form>
+      <button
+        className="dem-next-button"
+        onClick={handleSubmit}
+        disabled={!allChosen}
+      >
+        Next
+      </button>
     </div>
   );
 }

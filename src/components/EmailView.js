@@ -58,7 +58,7 @@ const AMOUNTS = [
 
 export default function EmailView({ userId, week, budget, onPayment, onWeekComplete }) {
     const [idx, setIdx] = useState(0);
-    const [stage, setStage] = useState('view'); // view or question
+    const [stage, setStage] = useState('view');
     const [responses, setResponses] = useState([]);
     const [dueDate, setDueDate] = useState('');
   
@@ -66,88 +66,150 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
       setResponses(COMPANIES.map(() => ({ choice: null, answered: false })));
       setIdx(0);
       setStage('view');
-      const d = new Date(); d.setDate(d.getDate()+7);
-      setDueDate(d.toLocaleDateString());
+      const dt = new Date();
+      dt.setDate(dt.getDate() + 7);
+      setDueDate(dt.toLocaleDateString());
     }, [week]);
   
-    const formatText = (tpl, vars) => tpl.replace(/\{([^}]+)\}/g, (_,key)=>(vars[key]));
+    const formatText = (tpl, vars) =>
+      tpl.replace(/\{name\}/g, vars.name)
+         .replace(/\{invoice_id\}/g, vars.invoice_id)
+         .replace(/\{amount\}/g, vars.amount.toFixed(2))
+         .replace(/\{due_date\}/g, vars.due_date)
+         .replace(/\{company\}/g, vars.company);
   
-    const handleChoice = choice => {
-      // immediately switch to questionnaire
-      setStage('question');
-      // record choice state
-      setResponses(rs=>{
-        const c=[...rs]; c[idx]={choice,answered:false}; return c;
+    const handleChoice = async choice => {
+      const amt = AMOUNTS[week - 1][idx];
+      const principle = PRINCIPLES_LIST[idx];
+      const comp = COMPANIES[idx];
+      const invoiceId = `${week}-${idx + 1}`;
+      const tpl = PRINCIPLES[principle][week - 1];
+      const emailText = formatText(tpl, {
+        name: 'Valued',
+        invoice_id: invoiceId,
+        amount: amt,
+        due_date: dueDate,
+        company: comp.name
       });
-      // deduct budget
-      const amt=AMOUNTS[week-1][idx];
-      if(choice==='pay') onPayment(amt);
-      // async fire-and-forget POST
-      (async()=>{
-        const principle=PRINCIPLES_LIST[idx];
-        const comp=COMPANIES[idx];
-        const invoiceId=`${week}-${idx+1}`;
-        const tpl=PRINCIPLES[principle][week-1];
-        const emailText=tpl
-          .replace('{name}','Valued')
-          .replace('{invoice_id}',invoiceId)
-          .replace('{amount}',amt.toFixed(2))
-          .replace('{due_date}',dueDate)
-          .replace('{company}',comp.name);
-        await API.post('/email',{user:userId,week,emailIndex:idx,behaviorType:principle,amount:amt,choice,timestamp:new Date(),emailText,companyLogo:comp.logo_url,companyAddress:comp.address});
-      })();
+  
+      // Deduct budget
+      if (choice === 'pay') onPayment(amt);
+  
+      // Save choice and show questionnaire
+      setResponses(r => {
+        const copy = [...r];
+        copy[idx] = { choice, answered: false };
+        return copy;
+      });
+      setStage('question');
+  
+      // Persist choice
+      API.post('/email', {
+        user: userId,
+        week,
+        emailIndex: idx,
+        behaviorType: principle,
+        amount: amt,
+        choice,
+        timestamp: new Date(),
+        emailText,
+        companyLogo: comp.logo_url,
+        companyAddress: comp.address
+      });
     };
   
     const handleQuestionnaire = answers => {
-      // mark answered
-      setResponses(rs=>{
-        const c=[...rs]; c[idx].answered=true; return c;
+      // Record answers
+      API.post('/response', {
+        user: userId,
+        week,
+        emailIndex: idx,
+        questions: answers
       });
-      // async POST
-      API.post('/response',{user:userId,week,emailIndex:idx,questions:answers});
-      // after state update, advance
+  
+      // Mark answered and return to view
+      setResponses(r => {
+        const copy = [...r];
+        copy[idx].answered = true;
+        return copy;
+      });
       setStage('view');
-      setTimeout(()=>{
-        const next=responses.findIndex((r,i)=>i>idx&&r.choice!==null&&!r.answered);
-        if(next!==-1) setIdx(next);
-        else if(responses.every(r=>r.choice!==null&&r.answered)) onWeekComplete();
-      },0);
+  
+      // Advance to next
+      setTimeout(() => {
+        const next = responses.findIndex((r, i) => r.choice !== null && !r.answered && i > idx);
+        if (next !== -1) setIdx(next);
+        else if (responses.every(r => r.choice !== null && r.answered)) {
+          onWeekComplete();
+        }
+      }, 0);
     };
   
-    const comp=COMPANIES[idx];
-    const amt=AMOUNTS[week-1][idx];
-    const principle=PRINCIPLES_LIST[idx];
-    const tpl=PRINCIPLES[principle][week-1];
-    const emailText=tpl
-      .replace('{name}','Valued')
-      .replace('{invoice_id}',`${week}-${idx+1}`)
-      .replace('{amount}',amt.toFixed(2))
-      .replace('{due_date}',dueDate)
-      .replace('{company}',comp.name);
+    const comp = COMPANIES[idx];
+    const amt = AMOUNTS[week - 1][idx];
+    const principle = PRINCIPLES_LIST[idx];
+    const rawTpl = PRINCIPLES[principle][week - 1];
+    const emailText = formatText(rawTpl, {
+      name: 'Valued',
+      invoice_id: `${week}-${idx + 1}`,
+      amount: amt,
+      due_date: dueDate,
+      company: comp.name
+    });
   
     return (
       <div className="panel email-panel split">
         <aside className="sidebar">
-          {COMPANIES.map((c,i)=>(
-            <div key={i} className={`sidebar-item ${idx===i?'active':''}`} onClick={()=>stage==='view'&&responses[i].choice===null&&setIdx(i)}>
-              <img src={c.logo_url} className="sidebar-logo" alt=""/><div>Email {i+1}</div>
+          {COMPANIES.map((c, i) => (
+            <div
+              key={i}
+              className={`sidebar-item ${idx === i ? 'active' : ''} ${responses[i]?.answered ? 'answered' : ''}`}
+              onClick={() => stage === 'view' && !responses[i]?.answered && setIdx(i)}
+            >
+              <img src={c.logo_url} className="sidebar-logo" alt={c.name} />
+              <div>Email {i + 1}</div>
             </div>
           ))}
         </aside>
+  
         <section className="main-content">
-          {stage==='view'&&(
+          {stage === 'view' && (
             <>
-              <header className="email-header"><img src={comp.logo_url} className="company-logo" alt=""/><div><h3>{comp.name}</h3><p>{comp.address}</p></div></header>
-              <article className="email-box"><pre>{emailText}</pre></article>
-              <div className="btn-row">
-                <button onClick={()=>handleChoice('pay')} disabled={amt>budget}>Pay now</button>
-                <button onClick={()=>handleChoice('wait')}>Wait a week</button>
-              </div>
+              <header className="email-header">
+                <img src={comp.logo_url} className="company-logo" alt={comp.name} />
+                <div>
+                  <h3>{comp.name}</h3>
+                  <p>{comp.address}</p>
+                </div>
+              </header>
+  
+              <article className="email-box">
+                <pre>{emailText}</pre>
+              </article>
+  
+              {!responses[idx]?.answered ? (
+                <div className="btn-row">
+                  <button onClick={() => handleChoice('pay')} disabled={amt > budget}>
+                    Pay now
+                  </button>
+                  <button onClick={() => handleChoice('wait')}>
+                    Wait a week
+                  </button>
+                </div>
+              ) : (
+                <div className="answered-note">
+                  You have already answered this invoice.
+                </div>
+              )}
             </>
           )}
-          {stage==='question'&&<Questionnaire onSubmit={handleQuestionnaire}/>}
+  
+          {stage === 'question' && (
+            <Questionnaire onSubmit={handleQuestionnaire} />
+          )}
         </section>
       </div>
     );
   }
+  
   

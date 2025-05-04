@@ -1,10 +1,14 @@
+// src/components/Demographics.js
 import React, { useState } from 'react';
 import API from '../api';
 import '../styles.css';
 
 export default function Demographics({ onNext }) {
   const [data, setData] = useState({
-    age: '', gender: '', education: '', location: ''
+    age: '',
+    gender: '',
+    education: '',
+    location: ''
   });
 
   const ageRanges   = ['18–21','22–25','26–30','31–40','41–50','51–65','66+'];
@@ -14,14 +18,26 @@ export default function Demographics({ onNext }) {
 
   const handleChange = field => e =>
     setData(prev => ({ ...prev, [field]: e.target.value }));
-  
+
   const handleSubmit = async e => {
-    e.preventDefault();
-    console.log('🔔 handleSubmit fired, data:', data);
+    // preventDefault only if called via form submit
+    if (e && e.preventDefault) e.preventDefault();
+    console.log('🔔 Demographics handleSubmit fired with:', data);
+
     const { age, gender, education, location } = data;
-    if (!age || !gender || !education || !location) return;
-    const res = await API.post('/user', data);
-    onNext(res.data.userId);
+    if (!age || !gender || !education || !location) {
+      console.warn('⚠️ Missing demographic fields, not submitting.');
+      return;
+    }
+
+    try {
+      const res = await API.post('/user', data);
+      console.log('✅ User created with ID:', res.data.userId);
+      onNext(res.data.userId);
+    } catch (err) {
+      console.error('❌ API error, advancing anyway:', err);
+      onNext(); // fallback advance
+    }
   };
 
   return (
@@ -52,7 +68,7 @@ export default function Demographics({ onNext }) {
         </div>
 
         <button
-          type="submit"
+          type="button"
           className="dem-next-button"
           onClick={handleSubmit}
         >

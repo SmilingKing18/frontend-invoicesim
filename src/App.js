@@ -8,6 +8,7 @@ function App() {
   const [stage, setStage] = useState('demographics');
   const [userId, setUserId] = useState(null);
   const [week, setWeek] = useState(1);
+  const [budget, setBudget] = useState(1000);
 
   const handleDemographicsNext = id => {
     setUserId(id);
@@ -16,6 +17,10 @@ function App() {
 
   const handleRulesNext = () => {
     setStage('emails');
+  };
+
+  const handlePayment = amount => {
+    setBudget(prev => prev - amount);
   };
 
   const handleWeekComplete = () => {
@@ -33,13 +38,21 @@ function App() {
       )}
       {stage === 'rules' && <Rules onNext={handleRulesNext} />}
       {stage === 'emails' && (
-        <EmailView
-          userId={userId}
-          week={week}
-          onWeekComplete={handleWeekComplete}
-        />
+        <>
+          <div className="budget-display">
+            Total Money left: {budget}€
+          </div>
+          <EmailView
+            userId={userId}
+            week={week}
+            onPayment={handlePayment}
+            onWeekComplete={handleWeekComplete}
+          />
+        </>
       )}
-      {stage === 'final' && <FinalQuestionnaire userId={userId} />}
+      {stage === 'final' && (
+        <FinalQuestionnaire userId={userId} />
+      )}
     </div>
   );
 }

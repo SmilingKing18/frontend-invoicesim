@@ -38,115 +38,171 @@ const PRINCIPLES = {
 const PRINCIPLES_LIST = ['loss aversion', 'scarcity', 'social proof', 'urgency'];
 const AMOUNTS = [700, 800, 900, 950];
 
-export default function EmailView({ userId, week, onWeekComplete }) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [responses, setResponses]   = useState(Array(4).fill({ choice: null, answered: false }));
-  const [stage, setStage]           = useState('view');
-  const [dueDateStr, setDueDateStr] = useState('');
-
-  useEffect(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    setDueDateStr(d.toLocaleDateString());
-  }, []);
-
-  const formatText = (template, vars) =>
-    template
-      .replace(/{name}/g, vars.name)
-      .replace(/{invoice_id}/g, vars.invoice_id)
-      .replace(/{amount}/g, vars.amount.toFixed(2))
-      .replace(/{due_date}/g, vars.due_date)
-      .replace(/{company}/g, vars.company);
-
-  const handleChoice = async choice => {
+export default function EmailView({
+    userId,
+    week,
+    onPayment,
+    onWeekComplete
+  }) {
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [responses, setResponses] = useState(
+      COMPANIES.map(() => ({ choice: null, answered: false }))
+    );
+    const [stage, setStage] = useState('view');
+    const [dueDateStr, setDueDateStr] = useState('');
+  
+    // On week change, reset everything
+    useEffect(() => {
+      setResponses(COMPANIES.map(() => ({ choice: null, answered: false })));
+      setSelectedIndex(0);
+      setStage('view');
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      setDueDateStr(d.toLocaleDateString());
+    }, [week]);
+  
+    const formatText = (template, vars) =>
+      template
+        .replace(/{name}/g, vars.name)
+        .replace(/{invoice_id}/g, vars.invoice_id)
+        .replace(/{amount}/g, vars.amount.toFixed(2))
+        .replace(/{due_date}/g, vars.due_date)
+        .replace(/{company}/g, vars.company);
+  
+    const handleChoice = async choice => {
+      const principle = PRINCIPLES_LIST[selectedIndex];
+      const amount = AMOUNTS[selectedIndex];
+      const company = COMPANIES[selectedIndex];
+      const invoiceId = `${week}-${selectedIndex + 1}`;
+      const template = PRINCIPLES[principle][week - 1];
+      const text = formatText(template, {
+        name: 'Valued',
+        invoice_id: invoiceId,
+        amount,
+        due_date: dueDateStr,
+        company: company.name,
+      });
+  
+      // **Deduct** if they paid
+      if (choice === 'pay') {
+        onPayment(amount);
+      }
+  
+      await API.post('/email', {
+        user: userId,
+        week,
+        emailIndex: selectedIndex,
+        behaviorType: principle,
+        amount,
+        choice,
+        timestamp: new Date(),
+        emailText: text,
+        companyLogo: company.logo_url,
+        companyAddress: company.address,
+      });
+  
+      // mark answered=false so questionnaire appears
+      const copy = [...responses];
+      copy[selectedIndex] = { choice, answered: false };
+      setResponses(copy);
+      setStage('question');
+    };
+  
+    const handleQuestionnaire = async answers => {
+      await API.post('/response', {
+        user: userId,
+        week,
+        emailIndex: selectedIndex,
+        questions: answers,
+      });
+  
+      const copy = [...responses];
+      copy[selectedIndex].answered = true;
+      setResponses(copy);
+      setStage('view');
+  
+      const nextUnanswered = copy.findIndex(r => !r.answered);
+      if (nextUnanswered !== -1) {
+        setSelectedIndex(nextUnanswered);
+      } else {
+        onWeekComplete();
+      }
+    };
+  
+    // prepare display
+    const company = COMPANIES[selectedIndex];
     const principle = PRINCIPLES_LIST[selectedIndex];
-    const amount    = AMOUNTS[selectedIndex];
-    const company   = COMPANIES[selectedIndex];
-    const invoiceId = `${week}-${selectedIndex+1}`;
-    const template  = PRINCIPLES[principle][week - 1];
-    const text      = formatText(template, {
+    const amount = AMOUNTS[selectedIndex];
+    const invoiceId = `${week}-${selectedIndex + 1}`;
+    const rawTpl = PRINCIPLES[principle][week - 1];
+    const emailText = formatText(rawTpl, {
       name: 'Valued',
       invoice_id: invoiceId,
       amount,
       due_date: dueDateStr,
-      company: company.name
+      company: company.name,
     });
-
-    await API.post('/email', {
-      user: userId,
-      week,
-      emailIndex: selectedIndex,
-      behaviorType: principle,
-      amount,
-      choice,
-      timestamp: new Date(),
-      emailText: text,
-      companyLogo: company.logo_url,
-      companyAddress: company.address
-    });
-
-    const copy = [...responses];
-    copy[selectedIndex] = { choice, answered: false };
-    setResponses(copy);
-    setStage('question');
-  };
-
-  const handleQuestionnaire = async answers => {
-    await API.post('/response', { user: userId, week, emailIndex: selectedIndex, questions: answers });
-    const copy = [...responses];
-    copy[selectedIndex].answered = true;
-    setResponses(copy);
-    setStage('view');
-    const nextIdx = copy.findIndex(r => !r.answered);
-    if (nextIdx >= 0) setSelectedIndex(nextIdx);
-    else onWeekComplete();
-  };
-
-  const company   = COMPANIES[selectedIndex];
-  const principle = PRINCIPLES_LIST[selectedIndex];
-  const amount    = AMOUNTS[selectedIndex];
-  const invoiceId = `${week}-${selectedIndex+1}`;
-  const rawTpl    = PRINCIPLES[principle][week - 1];
-  const emailText = formatText(rawTpl, {
-    name: 'Valued', invoice_id: invoiceId, amount, due_date: dueDateStr, company: company.name
-  });
-
-  return (
-    <div className="panel email-panel split">
-      <aside className="sidebar">
-        {COMPANIES.map((c, i) => (
-          <div
-            key={i}
-            className={`sidebar-item ${selectedIndex===i?'active':''} ${responses[i].answered?'answered':''}`}
-            onClick={() => { if (!responses[i].answered) { setSelectedIndex(i); setStage('view'); } }}
-          >
-            <img src={c.logo_url} alt="" className="sidebar-logo" />
-            <div>Email {i+1}</div>
-          </div>
-        ))}
-      </aside>
-      <section className="main-content">
-        {stage==='view' ? (
-          <>
-            <header className="email-header">
-              <img src={company.logo_url} alt="" className="company-logo" />
-              <div>
-                <h3>{company.name}</h3>
-                <p>{company.address}</p>
-              </div>
-            </header>
-            <article className="email-box">
-              <pre>{emailText}</pre>
-            </article>
-            <div className="btn-row">
-              <button onClick={()=>handleChoice('pay')}>Pay now</button>
-              <button onClick={()=>handleChoice('wait')}>Wait a week</button>
+  
+    return (
+      <div className="panel email-panel split">
+        <aside className="sidebar">
+          {COMPANIES.map((c, i) => (
+            <div
+              key={i}
+              className={`
+                sidebar-item
+                ${selectedIndex === i ? 'active' : ''}
+                ${responses[i].answered ? 'answered' : ''}
+              `}
+              onClick={() => {
+                if (!responses[i].answered) {
+                  setSelectedIndex(i);
+                  setStage('view');
+                }
+              }}
+            >
+              <img
+                src={c.logo_url}
+                alt=""
+                className="sidebar-logo"
+              />
+              <div>Email {i + 1}</div>
             </div>
-          </>
-        ) : (
-          <Questionnaire onSubmit={handleQuestionnaire} />
-        )}
-      </section>
-    </div>
-  );
-}
+          ))}
+        </aside>
+  
+        <section className="main-content">
+          {stage === 'view' ? (
+            <>
+              <header className="email-header">
+                <img
+                  src={company.logo_url}
+                  alt=""
+                  className="company-logo"
+                />
+                <div>
+                  <h3>{company.name}</h3>
+                  <p>{company.address}</p>
+                </div>
+              </header>
+  
+              <article className="email-box">
+                <pre>{emailText}</pre>
+              </article>
+  
+              <div className="btn-row">
+                <button onClick={() => handleChoice('pay')}>
+                  Pay now
+                </button>
+                <button onClick={() => handleChoice('wait')}>
+                  Wait a week
+                </button>
+              </div>
+            </>
+          ) : (
+            <Questionnaire onSubmit={handleQuestionnaire} />
+          )}
+        </section>
+      </div>
+    );
+  }

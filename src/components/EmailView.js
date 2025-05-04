@@ -1,17 +1,22 @@
 // src/components/EmailView.js
+import acmeLogo        from '../img/businesslogo.png';
+import brightsideLogo  from '../img/corplogo.png';
+import greenfieldLogo  from '../img/globalcorp.png';
+import novaLogo        from '../img/xcorplogo.png';
 import React, { useState, useEffect } from 'react';
 import API from '../api';
 import Questionnaire from './Questionnaire';
 import '../styles.css';
 
 // 1) Company list
+// 1) Company list
 const COMPANIES = [
-  { name: 'Acme Solutions, Inc.',    logo_url: process.env.PUBLIC_URL + '/static/img/acme-logo.png',     address: '123 Elm St, Metropolis, NY' },
-  { name: 'Brightside Technologies', logo_url: process.env.PUBLIC_URL + '/static/img/brightside-logo.png', address: '456 Oak Ave, Sunnyvale, CA' },
-  { name: 'Greenfield Co.',         logo_url: process.env.PUBLIC_URL + '/static/img/greenfield-logo.png',   address: '789 Pine Rd, Austin, TX' },
-  { name: 'Nova Financial',         logo_url: process.env.PUBLIC_URL + '/static/img/nova-logo.png',         address: '321 Maple Blvd, Chicago, IL' },
-];
-
+    { name: 'Acme Solutions, Inc.',    logo_url: acmeLogo,       address: '123 Elm St, Metropolis, NY' },
+    { name: 'Brightside Technologies', logo_url: brightsideLogo,  address: '456 Oak Ave, Sunnyvale, CA' },
+    { name: 'Greenfield Co.',          logo_url: greenfieldLogo,  address: '789 Pine Rd, Austin, TX' },
+    { name: 'Nova Financial',          logo_url: novaLogo,        address: '321 Maple Blvd, Chicago, IL' },
+  ];
+  
 // 2) Behavioral templates (mild / firm / final)
 const PRINCIPLES = {
   'loss aversion': [

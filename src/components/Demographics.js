@@ -9,7 +9,8 @@ export default function Demographics({ onNext }) {
     onNext(res.data.userId);
   };
 
-  const ages = Array.from({ length: 83 }, (_, i) => i + 18); // 18–100
+  const ages = [
+    '18–21', '22–25', '26–30', '31–40', '41–50', '51–65', '66+'];
   const genders = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
   const educations = ['High School', 'Bachelor’s Degree', 'Master’s Degree', 'PhD', 'Other'];
   const locations = ['North America', 'South America', 'Europe', 'Asia', 'Africa', 'Oceania', 'Other'];

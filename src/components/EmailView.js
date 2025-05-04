@@ -4,10 +4,10 @@ import Questionnaire from './Questionnaire';
 
 // Company definitions
 const COMPANIES = [
-  { name: 'Acme Solutions, Inc.',    logo_url: '/static/img/acme-logo.png',     address: '123 Elm St, Metropolis, NY' },
-  { name: 'Brightside Technologies', logo_url: '/static/img/brightside-logo.png', address: '456 Oak Ave, Sunnyvale, CA' },
-  { name: 'Greenfield Co.',         logo_url: '/static/img/greenfield-logo.png',   address: '789 Pine Rd, Austin, TX' },
-  { name: 'Nova Financial',         logo_url: '/static/img/nova-logo.png',         address: '321 Maple Blvd, Chicago, IL' },
+  { name: 'Acme Solutions, Inc.',    logo_url: '/statis/img/businesslogo.png',     address: '123 Elm St, Metropolis, NY' },
+  { name: 'Brightside Technologies', logo_url: '/static/img/corplogo.png', address: '456 Oak Ave, Sunnyvale, CA' },
+  { name: 'Greenfield Co.',         logo_url: '/static/img/globalcorp.png',   address: '789 Pine Rd, Austin, TX' },
+  { name: 'Nova Financial',         logo_url: '/static/img/xcorplogo.png',         address: '321 Maple Blvd, Chicago, IL' },
 ];
 
 // Behavioral principles templates: mild, firm, final
@@ -44,9 +44,9 @@ const PRINCIPLES_LIST = [
   
   // 4) Amounts matrix: [ [w1-slot1...], [w2-slot1...], [w3-slot1...] ]
   const AMOUNTS = [
-    [700,  800,  900,  950],  // Week 1
-    [750,  820,  920,  970],  // Week 2
-    [800,  850,  950,  990]   // Week 3
+    [200, 250, 300, 350], // week 1
+    [225, 275, 325, 375], // week 2
+    [250, 300, 350, 400] // week 3
   ];
   
   export default function EmailView({

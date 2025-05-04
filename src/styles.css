@@ -77,6 +77,9 @@ button {
     white-space: pre-wrap;    /* so line-breaks in the <pre> show */
     font-family: inherit;
     margin-bottom: 20px;
+    word-wrap: break-word;       /* old name for IE */
+    overflow-wrap: break-word;   /* standard */
+    word-break: break-word;      /* break long words if needed */
   }
   
   /* Header: logo + company info */

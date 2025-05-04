@@ -182,7 +182,37 @@ button {
   .selected {
     background: #4caf50 !important;
   }
+
+
+  .demographics {
+    text-align: center;
+  }
+  .dem-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    justify-items: center;
+    margin-top: 20px;
+  }
+  .dem-grid select {
+    width: 80%;
+    max-width: 280px;
+    height: 45px;
+    font-size: 1rem;
+  }
+
   
+  .dem-next-button {
+    margin-top: 30px;
+    padding: 12px 36px;
+    font-size: 1.1rem;
+    transition: transform 0.2s ease, background 0.3s ease;
+    animation: fadeIn 0.4s ease-out;
+  }
+  .dem-next-button:hover {
+    transform: scale(1.05);
+    background: #006064;
+  }
   /* Mobile responsiveness */
   @media (max-width: 600px) {
     .split {

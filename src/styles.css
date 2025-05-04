@@ -213,6 +213,52 @@ button {
     transform: scale(1.05);
     background: #006064;
   }
+
+/* === Demographics page tweaks === */
+
+/* Make the panel itself a centered column */
+.panel.demographics {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  /* Wrap the selects in a form container that’s centered & constrained */
+  .dem-form {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  /* Two-column grid for the four dropdowns */
+  .dem-form .dem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  
+  /* Ensure each select is large and fills its cell */
+  .dem-form .dem-grid select {
+    width: 100%;
+    max-width: 280px;
+    height: 48px;
+    font-size: 1rem;
+    padding: 0 10px;
+  }
+  
+  /* Next button sits below the grid, centered */
+  .dem-form .dem-next-button {
+    display: block;
+    margin: 30px auto 0;
+  }
+  
+  /* On small screens, collapse back to one-column */
+  @media (max-width: 600px) {
+    .dem-form .dem-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
   /* Mobile responsiveness */
   @media (max-width: 600px) {
     .split {

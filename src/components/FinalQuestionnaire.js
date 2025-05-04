@@ -3,18 +3,21 @@ import React, { useState } from 'react';
 import API from '../api';
 
 export default function FinalQuestionnaire({ userId }) {
-  const [data, setData] = useState({ q1:'', q2:'', q3:'' });
+  const [data, setData] = useState({ q1: '', q2: '', q3: '' });
   const [submitted, setSubmitted] = useState(false);
 
   const handleChange = (key, value) => {
     setData(prev => ({ ...prev, [key]: value }));
   };
 
-  const submit = async () => {
-    // Send final responses
-    await API.post('/final', { user: userId, final: data });
-    // Show thank-you screen
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    try {
+      await API.post('/final', { user: userId, final: data });
+    } catch (error) {
+      console.error('Error submitting final responses:', error);
+    } finally {
+      setSubmitted(true);
+    }
   };
 
   if (submitted) {
@@ -22,13 +25,12 @@ export default function FinalQuestionnaire({ userId }) {
       <div className="panel thank-you">
         <h2>Thank you for playing!</h2>
         <p>
-          We appreciate the time and thought you invested in this experiment.
-          Your responses will provide invaluable insights into how different
-          invoice messaging strategies influence payment behavior.
+          We sincerely appreciate the time and thought you put into this
+          experiment. Your feedback will help us understand how different
+          invoice messages influence payment behavior.
         </p>
         <p>
-          Thank you again for participating—your contribution is truly
-          appreciated!
+          Thanks again for your participation and valuable insights!
         </p>
       </div>
     );
@@ -52,7 +54,7 @@ export default function FinalQuestionnaire({ userId }) {
         value={data.q3}
         onChange={e => handleChange('q3', e.target.value)}
       />
-      <button onClick={submit}>
+      <button onClick={handleSubmit}>
         Finish
       </button>
     </div>

@@ -34,7 +34,7 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
     { key: 'finalFrontier',     icon: finalIcon,   title: 'Final Frontier',     desc: 'Completed all 3 weeks + final quiz!' }
   ];
 
-  // Update text inputs
+  // Handle textarea inputs
   const handleInput = key => e => setData(prev => ({ ...prev, [key]: e.target.value }));
 
   // Submit final questionnaire
@@ -50,34 +50,29 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
   // Compute badges after submission
   useEffect(() => {
     if (!submitted) return;
-    const fetchBadges = async () => {
+    (async () => {
       try {
         const res = await API.get(`/user/${userId}/data`);
         const { emailRecords, responses } = res.data;
 
+        // Compute individual flags
         const qp = emailRecords.some(r => r.responseTime < 10000);
         const tb = responses.every(r => Array.isArray(r.questions) && r.questions[3] >= 4);
         const rt = emailRecords.filter(r => r.choice === 'wait').length >= 3;
         const sc = emailRecords.some(r => r.behaviorType === 'social proof' && r.choice === 'pay');
         const aa = emailRecords.some(r => r.behaviorType === 'loss aversion' && r.choice === 'pay');
 
-        const weekly = [1000, 1000, 1000];
+        const weekly = [1000,1000,1000];
         emailRecords.forEach(r => {
-          if (r.choice === 'pay' && typeof r.week === 'number') {
-            weekly[r.week - 1] -= r.amount;
-          }
+          if (r.choice === 'pay' && typeof r.week === 'number') weekly[r.week-1] -= r.amount;
         });
         let carry = 1000;
-        const ends = weekly.map((spent, i) => {
-          const end = carry - spent;
-          carry = end + (i < 2 ? 1000 : 0);
-          return end;
-        });
+        const ends = weekly.map((spent,i) => { const end = carry - spent; carry = end + (i<2?1000:0); return end; });
         const bb = ends.every(e => e >= 250);
         const ff = true;
 
-        // Map computed flags to badge keys
-        const metrics = {
+        // Build metrics map
+        const metricsObj = {
           quickPayer:        qp,
           trustBuilder:      tb,
           riskTaker:         rt,
@@ -86,15 +81,16 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
           balancedBudgeter:  bb,
           finalFrontier:     ff
         };
-        const earned = badgeDefinitions.filter(b => metrics[b.key] || metrics[b.key === 'finalFrontier' ? 'ff' : b.key]);
-        setMetrics(metricsObj); 
-        setBadges(earned);
+        setMetrics(metricsObj);
+
+        // Filter earned badges
+        const earnedBadges = badgeDefinitions.filter(b => metricsObj[b.key]);
+        setBadges(earnedBadges);
       } catch (err) {
         console.error('Badge compute failed', err);
         setBadges(badgeDefinitions.filter(b => b.key === 'finalFrontier'));
       }
-    };
-    fetchBadges();
+    })();
   }, [submitted, userId]);
 
   if (!submitted) {
@@ -121,9 +117,9 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
         <h3>Awards Won!</h3>
         <div className="badge-grid horizontal">
           {badges.length > 0 ? (
-            badges.map((b, i) => (
+            badges.map((b,i) => (
               <div key={i} className="badge-card">
-                {b.icon && <img src={b.icon} className="badge-icon" alt={b.title} />}
+                <img src={b.icon} className="badge-icon" alt={b.title} />
                 <strong>{b.title}</strong>
                 <p>{b.desc}</p>
               </div>

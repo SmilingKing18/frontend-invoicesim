@@ -1,3 +1,4 @@
+// src/components/FinalQuestionnaire.js
 import React, { useState } from 'react';
 import API from '../api';
 import '../styles.css';
@@ -23,16 +24,15 @@ export default function FinalQuestionnaire({ userId, sessionId, metrics = {} }) 
   const badgeDefinitions = [
     { key: 'quickPayer',        icon: quickIcon,   title: 'Quick Payer',       desc: 'Answered an invoice in under 10 seconds!' },
     { key: 'trustBuilder',      icon: trustIcon,   title: 'Trust Builder',      desc: 'Rated trust ≥ 4 on every email!' },
-    { key: 'riskTaker',         icon: riskIcon,    title: 'Risk Taker',         desc: 'Chose “Wait” on 3 or more invoices!' },
+    { key: 'riskTaker',         icon: riskIcon,    title: 'Risk Taker',         desc: 'Chose “Wait” on 3+ invoices!' },
     { key: 'socialConformist',  icon: socialIcon,  title: 'Social Conformist',  desc: 'Paid when peers did (social proof)!' },
     { key: 'authorityAdherent', icon: authIcon,    title: 'Authority Adherent',  desc: 'Paid at least one “loss aversion” invoice!' },
-    { key: 'balancedBudgeter',  icon: budgetIcon,  title: 'Balanced Budgeter',  desc: 'Kept ≥25% of budget each week!' },
+    { key: 'balancedBudgeter',  icon: budgetIcon,  title: 'Balanced Budgeter',  desc: 'Kept ≥ 25% of budget each week!' },
     { key: 'finalFrontier',     icon: finalIcon,   title: 'Final Frontier',     desc: 'Completed all 3 weeks + final quiz!' }
   ];
 
-  const handleInput = key => e => {
+  const handleInput = key => e =>
     setData(prev => ({ ...prev, [key]: e.target.value }));
-  };
 
   const handleFinish = async () => {
     try {
@@ -81,20 +81,32 @@ export default function FinalQuestionnaire({ userId, sessionId, metrics = {} }) 
 
   return (
     <div className="panel badge-screen">
-      <h2>Thank you for playing!</h2>
-      <p>We sincerely appreciate the time and thought you put into this experiment.</p>
-      <p>Thanks again for your participation and valuable insights!</p>
+      {/* Centered thank-you box */}
+      <div className="thankyou-box">
+        <h2>Thank you for playing!</h2>
+        <p>
+          We sincerely appreciate the time and thought you put into this
+          experiment.
+        </p>
+        <p>
+          Thanks again for your participation and valuable insights!
+        </p>
+      </div>
 
-      <div className="badge-grid">
-        {badgeDefinitions
-          .filter(b => metrics && metrics[b.key])
-          .map((b, i) => (
-            <div key={i} className="badge-card">
-              <img src={b.icon} className="badge-icon" alt={b.title} />
-              <strong>{b.title}</strong>
-              <p>{b.desc}</p>
-            </div>
-          ))}
+      {/* Awards Won box */}
+      <div className="awards-box">
+        <h3>Awards Won!</h3>
+        <div className="badge-grid horizontal">
+          {badgeDefinitions
+            .filter(b => metrics[b.key])
+            .map((b, i) => (
+              <div key={i} className="badge-card">
+                <img src={b.icon} className="badge-icon" alt={b.title} />
+                <strong>{b.title}</strong>
+                <p>{b.desc}</p>
+              </div>
+            ))}
+        </div>
       </div>
     </div>
   );

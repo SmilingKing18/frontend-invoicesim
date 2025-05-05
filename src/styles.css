@@ -328,3 +328,33 @@ button {
     margin-top: 4px;
   }
   
+  /* --- Final Screen Boxes --- */
+.thankyou-box,
+.awards-box {
+  background: #80deea;
+  color: #004d40;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px auto;
+  max-width: 800px;
+  text-align: center;
+}
+
+/* Slightly darker header for awards */
+.awards-box {
+  background: #4db6ac;
+}
+
+.awards-box h3 {
+  margin-top: 0;
+  font-size: 1.5rem;
+}
+
+/* Horizontal badge layout */
+.badge-grid.horizontal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 15px;
+}

@@ -74,7 +74,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
 
   const [idx, setIdx] = useState(0);
   const [stage, setStage] = useState('view'); // 'view' or 'question'
-  const [responses, setResponses] = useState([]);
+  const [responses, setResponses] = useState(() => order.map(() => ({ choice: null, answered: false })));
   const [dueDate, setDueDate] = useState('');
 
   // Reset state on week change
@@ -192,7 +192,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
       </aside>
 
       <section className="main-content">
-        <ProgressBar week={week} emailIndex={idx} />
+        <ProgressBar week={week} emailIndex={responses.filter(r => r.choice !== null).length} />
 
         {stage === 'view' && (
           <>

@@ -11,12 +11,17 @@ import authIcon    from '../badges/auth.png';
 import budgetIcon  from '../badges/budget.png';
 import finalIcon   from '../badges/final.png';
 
-export default function FinalQuestionnaire({ userId, sessionId }) {
-  const [data, setData] = useState({ countDown: 3, q1: '', q2: '', q3: '' });
+export default function FinalQuestionnaire({ userId, sessionId, metrics }) {
+  const [data, setData] = useState({
+    countdownText: '',
+    q1: '',
+    q2: '',
+    q3: ''
+  });
   const [submitted, setSubmitted] = useState(false);
   const [badges, setBadges] = useState([]);
 
-  // Compute badges once we submit
+  // Compute badges once submitted
   useEffect(() => {
     if (!submitted) return;
     (async () => {
@@ -30,19 +35,17 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
       const ff = true;
 
       setBadges([
-        { earned: qp, icon: quickIcon,  title: 'Quick Payer',      desc: 'You answered an invoice in under 10 seconds!' },
-        { earned: tb, icon: trustIcon,  title: 'Trust Builder',    desc: 'You rated trust ≥ 4 on every email!' },
-        { earned: rt, icon: riskIcon,   title: 'Risk Taker',       desc: 'You chose “Wait” 3 or more times!' },
-        { earned: sc, icon: socialIcon, title: 'Social Conformist',desc: 'You paid when peers did (social proof)!' },
-        { earned: aa, icon: authIcon,   title: 'Authority Adherent',desc: 'You paid all CEO-signed invoices!' },
-        { earned: bb, icon: budgetIcon, title: 'Balanced Budgeter',desc: 'You kept a healthy budget all weeks!' },
-        { earned: ff, icon: finalIcon,  title: 'Final Frontier',   desc: 'You completed all 3 weeks + questionnaire!' }
+        { earned: qp, icon: quickIcon,  title: 'Quick Payer',       desc: 'You answered an invoice in under 10 seconds!' },
+        { earned: tb, icon: trustIcon,  title: 'Trust Builder',     desc: 'You rated trust ≥ 4 on every email!' },
+        { earned: rt, icon: riskIcon,   title: 'Risk Taker',        desc: 'You chose “Wait” 3 or more times!' },
+        { earned: sc, icon: socialIcon, title: 'Social Conformist', desc: 'You paid when peers did (social proof)!' },
+        { earned: aa, icon: authIcon,   title: 'Authority Adherent', desc: 'You paid all CEO-signed invoices!' },
+        { earned: bb, icon: budgetIcon, title: 'Balanced Budgeter', desc: 'You kept a healthy budget all weeks!' },
+        { earned: ff, icon: finalIcon,  title: 'Final Frontier',    desc: 'You completed all 3 weeks + questionnaire!' }
       ]);
     })();
   }, [submitted]);
 
-  const handleScale = val => () =>
-    setData(d => ({ ...d, countDown: val }));
   const handleInput = key => e =>
     setData(d => ({ ...d, [key]: e.target.value }));
 
@@ -56,16 +59,11 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
       <div className="panel final-questionnaire">
         <h2>Final Thoughts</h2>
 
-        <p>Would you have paid faster if the email had a countdown timer?</p>
-        <div className="scale">
-          {[1,2,3,4,5].map(n => (
-            <span
-              key={n}
-              className={data.countDown===n?'dot selected':'dot'}
-              onClick={handleScale(n)}
-            >{n}</span>
-          ))}
-        </div>
+        <textarea
+          placeholder="Would you have paid faster if the email had a countdown timer?"
+          value={data.countdownText}
+          onChange={handleInput('countdownText')}
+        />
 
         <textarea
           placeholder="Would sender title (CEO vs assistant) change behavior?"
@@ -82,7 +80,13 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
           value={data.q3}
           onChange={handleInput('q3')}
         />
-        <button onClick={submit}>Finish</button>
+
+        <button
+          type="button"
+          onClick={submit}
+        >
+          Finish
+        </button>
       </div>
     );
   }

@@ -139,6 +139,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
 
   // Handle questionnaire submission
   const handleQuestionnaire = async answers => {
+    // persist responses
     await API.post('/response', {
       user:       userId,
       week,
@@ -147,19 +148,21 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
       questions:  answers
     });
 
+    // mark answered and advance
     setResponses(rs => {
       const copy = [...rs];
       copy[idx].answered = true;
       return copy;
     });
-    setStage('view');
 
-    // Advance or finish week
-    setTimeout(() => {
-      const next = responses.findIndex((r, i) => r.choice !== null && !r.answered && i > idx);
-      if (next !== -1) setIdx(next);
-      else if (responses.every(r => r.choice !== null && r.answered)) onWeekComplete();
-    }, 0);
+    // find next unanswered
+    const next = responses.findIndex(r => !r.answered);
+    if (next !== -1) {
+      setIdx(next);
+      setStage('view');
+    } else {
+      onWeekComplete();
+    }
   };
 
   // Current slot render data
@@ -192,7 +195,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
       </aside>
 
       <section className="main-content">
-        <ProgressBar week={week} emailIndex={responses.filter(r => r.choice !== null).length} />
+        <ProgressBar week={week} answeredCount={responses.filter(r => r.answered).length} />
 
         {stage === 'view' && (
           <>

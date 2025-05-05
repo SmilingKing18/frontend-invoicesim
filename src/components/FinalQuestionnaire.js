@@ -1,8 +1,9 @@
 // src/components/FinalQuestionnaire.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import API from '../api';
 import '../styles.css';
 
+// Badge icons
 import quickIcon   from '../img/badges/quick.png';
 import trustIcon   from '../img/badges/trust.png';
 import riskIcon    from '../img/badges/risk.png';
@@ -11,7 +12,7 @@ import authIcon    from '../img/badges/auth.png';
 import budgetIcon  from '../img/badges/budget.png';
 import finalIcon   from '../img/badges/final.png';
 
-export default function FinalQuestionnaire({ userId, sessionId, metrics = {} }) {
+export default function FinalQuestionnaire({ userId, sessionId }) {
   const [data, setData] = useState({
     countdownText: '',
     q1: '',
@@ -19,21 +20,25 @@ export default function FinalQuestionnaire({ userId, sessionId, metrics = {} }) 
     q3: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [badges, setBadges] = useState([]);
 
-  // Badge definitions
+  // Master list of badge definitions
   const badgeDefinitions = [
     { key: 'quickPayer',        icon: quickIcon,   title: 'Quick Payer',       desc: 'Answered an invoice in under 10 seconds!' },
     { key: 'trustBuilder',      icon: trustIcon,   title: 'Trust Builder',      desc: 'Rated trust ≥ 4 on every email!' },
-    { key: 'riskTaker',         icon: riskIcon,    title: 'Risk Taker',         desc: 'Chose “Wait” on 3+ invoices!' },
+    { key: 'riskTaker',         icon: riskIcon,    title: 'Risk Taker',         desc: 'Chose “Wait” on 3 or more invoices!' },
     { key: 'socialConformist',  icon: socialIcon,  title: 'Social Conformist',  desc: 'Paid when peers did (social proof)!' },
     { key: 'authorityAdherent', icon: authIcon,    title: 'Authority Adherent',  desc: 'Paid at least one “loss aversion” invoice!' },
-    { key: 'balancedBudgeter',  icon: budgetIcon,  title: 'Balanced Budgeter',  desc: 'Kept ≥ 25% of budget each week!' },
+    { key: 'balancedBudgeter',  icon: budgetIcon,  title: 'Balanced Budgeter',  desc: 'Kept at least 25% of budget each week!' },
     { key: 'finalFrontier',     icon: finalIcon,   title: 'Final Frontier',     desc: 'Completed all 3 weeks + final quiz!' }
   ];
 
-  const handleInput = key => e =>
+  // Handle textarea inputs
+  const handleInput = key => e => {
     setData(prev => ({ ...prev, [key]: e.target.value }));
+  };
 
+  // On Finish click, post final data and mark submitted
   const handleFinish = async () => {
     try {
       await API.post('/final', { user: userId, sessionId, final: data });
@@ -43,6 +48,40 @@ export default function FinalQuestionnaire({ userId, sessionId, metrics = {} }) 
     setSubmitted(true);
   };
 
+  // Compute badges once we have submitted
+  useEffect(() => {
+    if (!submitted) return;
+    (async () => {
+      const res = await API.get(`/user/${userId}/data`);
+      const { emailRecords, responses } = res.data;
+
+      // Quick Payer: any response under 10s
+      const qp = emailRecords.some(r => r.responseTime < 10000);
+      // Trust Builder: trust scores (4th question) all >= 4
+      const tb = responses.every(r => r.questions[3] >= 4);
+      // Risk Taker: waited 3+ times
+      const rt = emailRecords.filter(r => r.choice === 'wait').length >= 3;
+      // Social Conformist: paid a 'social proof' invoice
+      const sc = emailRecords.some(r => r.behaviorType === 'social proof' && r.choice === 'pay');
+      // Authority Adherent: paid a loss aversion invoice
+      const aa = emailRecords.some(r => r.behaviorType === 'loss aversion' && r.choice === 'pay');
+      // Balanced Budgeter: track weekly budgets
+      const weekly = [1000,1000,1000];
+      emailRecords.forEach(r => { if(r.choice==='pay') weekly[r.week-1] -= r.amount; });
+      let carry = 1000;
+      const ends = weekly.map((spent,i) => { const end = carry - spent; carry = end + (i<2?1000:0); return end; });
+      const bb = ends.every(e => e >= 250);
+      // Final Frontier: always true if reached here
+      const ff = true;
+
+      // Build earned badge list
+      const metrics = { quickPayer: qp, trustBuilder: tb, riskTaker: rt, socialConformist: sc, authorityAdherent: aa, balancedBudgeter: bb, finalFrontier: ff };
+      const earned = badgeDefinitions.filter(b => metrics[b.key]);
+      setBadges(earned);
+    })();
+  }, [submitted, userId]);
+
+  // Show questionnaire until submitted
   if (!submitted) {
     return (
       <div className="panel final-questionnaire">
@@ -72,40 +111,34 @@ export default function FinalQuestionnaire({ userId, sessionId, metrics = {} }) 
           onChange={handleInput('q3')}
         />
 
-        <button type="button" onClick={handleFinish}>
-          Finish
-        </button>
+        <button type="button" onClick={handleFinish}>Finish</button>
       </div>
     );
   }
 
+  // After submit: thank you + awards
   return (
     <div className="panel badge-screen">
-      {/* Centered thank-you box */}
       <div className="thankyou-box">
         <h2>Thank you for playing!</h2>
-        <p>
-          We sincerely appreciate the time and thought you put into this
-          experiment.
-        </p>
-        <p>
-          Thanks again for your participation and valuable insights!
-        </p>
+        <p>We sincerely appreciate the time and thought you put into this experiment.</p>
+        <p>Thanks again for your participation and valuable insights!</p>
       </div>
 
-      {/* Awards Won box */}
       <div className="awards-box">
         <h3>Awards Won!</h3>
         <div className="badge-grid horizontal">
-          {badgeDefinitions
-            .filter(b => metrics[b.key])
-            .map((b, i) => (
+          {badges.length > 0 ? (
+            badges.map((b,i) => (
               <div key={i} className="badge-card">
                 <img src={b.icon} className="badge-icon" alt={b.title} />
                 <strong>{b.title}</strong>
                 <p>{b.desc}</p>
               </div>
-            ))}
+            ))
+          ) : (
+            <p>No awards earned this time.</p>
+          )}
         </div>
       </div>
     </div>

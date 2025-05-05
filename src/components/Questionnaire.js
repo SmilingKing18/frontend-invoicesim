@@ -1,9 +1,9 @@
-/ src/components/Questionnaire.js
+// src/components/Questionnaire.js
 import React, { useState } from 'react';
 import '../styles.css';
 
 export default function Questionnaire({ onSubmit }) {
-  // Define your four questions keys and labels
+  // Questions to ask after each email
   const questions = [
     { key: 'urgency',    label: 'How urgent did you feel this email was?' },
     { key: 'arousal',    label: 'How emotionally arousing was the message?' },
@@ -11,19 +11,18 @@ export default function Questionnaire({ onSubmit }) {
     { key: 'trust',      label: 'How much did you trust the sender?' }
   ];
 
-  // Initialize answers state with 1s
+  // Initialize each to 1
   const [answers, setAnswers] = useState(
     questions.reduce((acc, q) => ({ ...acc, [q.key]: 1 }), {})
   );
 
-  // Update a specific answer
   const handleSelect = (key, value) => {
     setAnswers(prev => ({ ...prev, [key]: value }));
   };
 
-  // When the form is submitted, call onSubmit with an array of the values in order
   const handleSubmit = e => {
     e.preventDefault();
+    // Convert answers object to array in question order
     const result = questions.map(q => answers[q.key]);
     onSubmit(result);
   };
@@ -40,9 +39,7 @@ export default function Questionnaire({ onSubmit }) {
                 key={n}
                 className={answers[q.key] === n ? 'dot selected' : 'dot'}
                 onClick={() => handleSelect(q.key, n)}
-              >
-                {n}
-              </span>
+              >{n}</span>
             ))}
           </div>
         </div>

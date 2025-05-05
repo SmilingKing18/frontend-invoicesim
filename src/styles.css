@@ -357,4 +357,29 @@ button {
   gap: 15px;
   justify-content: center;
   margin-top: 15px;
+  flex: 0 0 auto;
+  width: 140px;            /* limit each card’s width */
+  text-align: center;
+  margin: 0 10px;
+}
+
+.badge-card .badge-icon {
+  width: 80px;             /* make icons smaller */
+  height: 80px;
+  object-fit: contain;
+  margin: 0 auto 8px;
+}
+
+.badge-card strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 4px;
+  animation: popIn 0.6s ease-out;
+}
+
+/* pop-in keyframes */
+@keyframes popIn {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
 }

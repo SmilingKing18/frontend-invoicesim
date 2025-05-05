@@ -133,17 +133,21 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
       <div className="awards-box">
         <h3>Awards Won!</h3>
         <div className="badge-grid horizontal">
-          {badges.length > 0 ? (
-            badges.map((b,i) => (
-              <div key={i} className="badge-card">
-                <img src={b.icon} className="badge-icon" alt={b.title} />
-                <strong>{b.title}</strong>
-                <p>{b.desc}</p>
-              </div>
-            ))
-          ) : (
-            <p>No awards earned this time.</p>
-          )}
+        <div className="badge-grid horizontal">
+         {badgeDefinitions.map((b,i) => {
+          const earned = badges.some(e => e.key===b.key);
+        return (
+          <div
+          key={i}
+          className={`badge-card ${earned ? '' : 'unearned'}`}
+        >
+         <img src={b.icon} className="badge-icon" alt={b.title}/>
+         <strong>{b.title}</strong>
+         <p>{b.desc}</p>
+       </div>
+     );
+   })}
+ </div>
         </div>
       </div>
     </div>

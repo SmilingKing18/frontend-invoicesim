@@ -1,17 +1,16 @@
-// src/components/EmailView.js
-// src/components/EmailView.js
+/// src/components/EmailView.js
 import React, { useState, useEffect, useMemo } from 'react';
 import API from '../api';
 import Questionnaire from './Questionnaire';
 import '../styles.css';
 
 // Logos
-import acmeLogo from '../img/businesslogo.png';
-import brightsideLogo from '../img/corplogo.png';
-import greenfieldLogo from '../img/globalcorp.png';
-import novaLogo from '../img/xcorplogo.png';
+import acmeLogo        from '../img/businesslogo.png';
+import brightsideLogo  from '../img/corplogo.png';
+import greenfieldLogo  from '../img/globalcorp.png';
+import novaLogo        from '../img/xcorplogo.png';
 
-// Fisher-Yates shuffle
+// Fisher–Yates shuffle helper
 function shuffle(array) {
   const a = [...array];
   for (let i = a.length - 1; i > 0; i--) {
@@ -20,6 +19,7 @@ function shuffle(array) {
   }
   return a;
 }
+
 
 // 1) Company list
 const COMPANIES = [
@@ -70,22 +70,26 @@ const AMOUNTS = [
 
 
 export default function EmailView({ userId, week, budget, onPayment, onWeekComplete }) {
-  // Create a randomized order of email slots once per component mount
-  const order = useMemo(() => shuffle([0,1,2,3]), []);
+  // Create a randomized order of slots once
+  const order = useMemo(() => shuffle([0, 1, 2, 3]), []);
 
   const [idx, setIdx] = useState(0);
-  const [stage, setStage] = useState('view');
+  const [stage, setStage] = useState('view'); // 'view' or 'question'
   const [dueDate, setDueDate] = useState('');
 
   // Reset on week change
   useEffect(() => {
     setIdx(0);
     setStage('view');
-    const dt = new Date(); dt.setDate(dt.getDate()+7);
+    const dt = new Date();
+    dt.setDate(dt.getDate() + 7);
     setDueDate(dt.toLocaleDateString());
   }, [week]);
 
-  // Fill placeholders
+  // Weekly progress percent
+  const weekPercent = (week / 3) * 100;
+
+  // Format template text
   const formatText = (tpl, vars) =>
     tpl.replace(/\{name\}/g, vars.name)
        .replace(/\{invoice_id\}/g, vars.invoice_id)
@@ -93,38 +97,57 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
        .replace(/\{due_date\}/g, vars.due_date)
        .replace(/\{company\}/g, vars.company);
 
-  // Handle Pay/Wait choice
+  // Handle Pay or Wait
   const handleChoice = async choice => {
-    const slot      = order[idx];
-    const comp      = COMPANIES[slot];
+    const slot = order[idx];
+    const comp = COMPANIES[slot];
     const principle = PRINCIPLES_LIST[slot];
-    const amt       = AMOUNTS[week-1][slot];
-    const invoiceId = `${week}-${idx+1}`;
-    const tpl       = PRINCIPLES[principle][week-1];
-    const emailText = formatText(tpl, { name:'Valued', invoice_id:invoiceId, amount:amt, due_date:dueDate, company:comp.name });
+    const amt = AMOUNTS[week - 1][slot];
+    const invoiceId = `${week}-${idx + 1}`;
+    const tpl = PRINCIPLES[principle][week - 1];
+    const emailText = formatText(tpl, {
+      name: 'Valued',
+      invoice_id: invoiceId,
+      amount: amt,
+      due_date: dueDate,
+      company: comp.name
+    });
 
-    if(choice==='pay') onPayment(amt);
+    if (choice === 'pay') onPayment(amt);
     setStage('question');
 
-    await API.post('/email', {
-      user: userId,
-      week,
-      emailIndex: idx,
-      behaviorType: principle,
-      amount: amt,
-      choice,
-      timestamp: new Date(),
-      emailText,
-      companyLogo: comp.logo_url,
-      companyAddress: comp.address
-    });
+    try {
+      await API.post('/email', {
+        user: userId,
+        week,
+        emailIndex: idx,
+        behaviorType: principle,
+        amount: amt,
+        choice,
+        timestamp: new Date(),
+        emailText,
+        companyLogo: comp.logo_url,
+        companyAddress: comp.address
+      });
+    } catch (err) {
+      console.error('Email post failed', err);
+    }
   };
 
-  // Handle questionnaire submission
+  // After questionnaire submission
   const handleQuestionnaire = async answers => {
-    await API.post('/response', { user: userId, week, emailIndex: idx, questions: answers });
+    try {
+      await API.post('/response', {
+        user: userId,
+        week,
+        emailIndex: idx,
+        questions: answers
+      });
+    } catch (err) {
+      console.error('Response post failed', err);
+    }
 
-    if(idx < COMPANIES.length - 1) {
+    if (idx < order.length - 1) {
       setIdx(idx + 1);
       setStage('view');
     } else {
@@ -132,41 +155,83 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
     }
   };
 
-  // Derive current email
-  const slot      = order[idx];
-  const comp      = COMPANIES[slot];
+  // Current email data
+  const slot = order[idx];
+  const comp = COMPANIES[slot];
   const principle = PRINCIPLES_LIST[slot];
-  const amt       = AMOUNTS[week-1][slot];
-  const rawTpl    = PRINCIPLES[principle][week-1];
-  const emailText = formatText(rawTpl, { name:'Valued', invoice_id:`${week}-${idx+1}`, amount:amt, due_date:dueDate, company:comp.name });
+  const amt = AMOUNTS[week - 1][slot];
+  const rawTpl = PRINCIPLES[principle][week - 1];
+  const emailText = formatText(rawTpl, {
+    name: 'Valued',
+    invoice_id: `${week}-${idx + 1}`,
+    amount: amt,
+    due_date: dueDate,
+    company: comp.name
+  });
 
   return (
     <div className="panel email-panel split">
       <aside className="sidebar">
-        {order.map((slotIdx,i)=>(
-          <div key={i}
-               className={`sidebar-item ${i===idx?'active':''}`}
-               onClick={()=> stage==='view' && setIdx(i)}>
-            <img src={COMPANIES[slotIdx].logo_url} className="sidebar-logo" alt=""/>
-            <div>Email {i+1}</div>
+        {order.map((slotIdx, i) => (
+          <div
+            key={i}
+            className={`sidebar-item ${i === idx ? 'active' : ''}`}
+            onClick={() => stage === 'view' && setIdx(i)}
+          >
+            <img
+              src={COMPANIES[slotIdx].logo_url}
+              className="sidebar-logo"
+              alt={COMPANIES[slotIdx].name}
+            />
+            <div>Email {i + 1}</div>
           </div>
         ))}
       </aside>
+
       <section className="main-content">
-        {stage==='view' ? (
+        {/* Weekly progress bar */}
+        <div className="progress-container">
+          <div className="label">Week {week} of 3</div>
+          <div className="progress-track">
+            <div
+              className="progress-bar week-bar"
+              style={{ width: `${weekPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {stage === 'view' ? (
           <>
             <header className="email-header">
-              <img src={comp.logo_url} className="company-logo" alt=""/>
-              <div><h3>{comp.name}</h3><p>{comp.address}</p></div>
+              <img
+                src={comp.logo_url}
+                className="company-logo"
+                alt={comp.name}
+              />
+              <div>
+                <h3>{comp.name}</h3>
+                <p>{comp.address}</p>
+              </div>
             </header>
-            <article className="email-box"><pre>{emailText}</pre></article>
+
+            <article className="email-box">
+              <pre>{emailText}</pre>
+            </article>
+
             <div className="btn-row">
-              <button onClick={()=>handleChoice('pay')} disabled={amt>budget}>Pay now</button>
-              <button onClick={()=>handleChoice('wait')}>Wait a week</button>
+              <button
+                onClick={() => handleChoice('pay')}
+                disabled={amt > budget}
+              >
+                Pay now
+              </button>
+              <button onClick={() => handleChoice('wait')}>
+                Wait a week
+              </button>
             </div>
           </>
         ) : (
-          <Questionnaire onSubmit={handleQuestionnaire}/>
+          <Questionnaire onSubmit={handleQuestionnaire} />
         )}
       </section>
     </div>

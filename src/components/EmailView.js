@@ -56,160 +56,176 @@ const AMOUNTS = [
   [400, 500, 600, 800]    // Week 3
 ];
 
-export default function EmailView({ userId, week, budget, onPayment, onWeekComplete }) {
-    const [idx, setIdx] = useState(0);
-    const [stage, setStage] = useState('view');
-    const [responses, setResponses] = useState([]);
-    const [dueDate, setDueDate] = useState('');
-  
-    useEffect(() => {
-      setResponses(COMPANIES.map(() => ({ choice: null, answered: false })));
-      setIdx(0);
-      setStage('view');
-      const dt = new Date();
-      dt.setDate(dt.getDate() + 7);
-      setDueDate(dt.toLocaleDateString());
-    }, [week]);
-  
-    const formatText = (tpl, vars) =>
-      tpl.replace(/\{name\}/g, vars.name)
-         .replace(/\{invoice_id\}/g, vars.invoice_id)
-         .replace(/\{amount\}/g, vars.amount.toFixed(2))
-         .replace(/\{due_date\}/g, vars.due_date)
-         .replace(/\{company\}/g, vars.company);
-  
-    const handleChoice = async choice => {
-      const amt = AMOUNTS[week - 1][idx];
-      const principle = PRINCIPLES_LIST[idx];
-      const comp = COMPANIES[idx];
-      const invoiceId = `${week}-${idx + 1}`;
-      const tpl = PRINCIPLES[principle][week - 1];
-      const emailText = formatText(tpl, {
-        name: 'Valued',
-        invoice_id: invoiceId,
-        amount: amt,
-        due_date: dueDate,
-        company: comp.name
-      });
-  
-      // Deduct budget
-      if (choice === 'pay') onPayment(amt);
-  
-      // Save choice and show questionnaire
-      setResponses(r => {
-        const copy = [...r];
-        copy[idx] = { choice, answered: false };
-        return copy;
-      });
-      setStage('question');
-  
-      // Persist choice
-      API.post('/email', {
-        user: userId,
-        week,
-        emailIndex: idx,
-        behaviorType: principle,
-        amount: amt,
-        choice,
-        timestamp: new Date(),
-        emailText,
-        companyLogo: comp.logo_url,
-        companyAddress: comp.address
-      });
-    };
-  
-    const handleQuestionnaire = answers => {
-      // Record answers
-      API.post('/response', {
-        user: userId,
-        week,
-        emailIndex: idx,
-        questions: answers
-      });
-  
-      // Mark answered and return to view
-      setResponses(r => {
-        const copy = [...r];
-        copy[idx].answered = true;
-        return copy;
-      });
-      setStage('view');
-  
-      // Advance to next
-      setTimeout(() => {
-        const next = responses.findIndex((r, i) => r.choice !== null && !r.answered && i > idx);
-        if (next !== -1) setIdx(next);
-        else if (responses.every(r => r.choice !== null && r.answered)) {
-          onWeekComplete();
-        }
-      }, 0);
-    };
-  
-    const comp = COMPANIES[idx];
-    const amt = AMOUNTS[week - 1][idx];
-    const principle = PRINCIPLES_LIST[idx];
-    const rawTpl = PRINCIPLES[principle][week - 1];
-    const emailText = formatText(rawTpl, {
+// Fisher–Yates shuffle
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export default function EmailView({
+  userId,
+  sessionId,    // <----- new prop
+  week,
+  budget,
+  onPayment,
+  onWeekComplete
+}) {
+  const [selected, setSelected] = useState(0);
+  const [stage, setStage]       = useState('view');
+  const [responses, setResponses] = useState([]);
+  const [dueDate, setDueDate]   = useState('');
+  const [displayedAt, setDisplayedAt] = useState(null);
+
+  // 1. Generate a randomized order of slots once per mount
+  const order = useMemo(() => shuffle([0,1,2,3]), []);
+
+  useEffect(() => {
+    // reset on week change
+    setResponses(order.map(() => ({ choice: null, answered: false })));
+    setSelected(0);
+    setStage('view');
+    const d = new Date(); d.setDate(d.getDate() + 7);
+    setDueDate(d.toLocaleDateString());
+    setDisplayedAt(Date.now());
+  }, [week, order]);
+
+  const formatText = (tpl, v) =>
+    tpl
+      .replace(/{name}/g, v.name)
+      .replace(/{invoice_id}/g, v.invoice_id)
+      .replace(/{amount}/g, v.amount.toFixed(2))
+      .replace(/{due_date}/g, v.due_date)
+      .replace(/{company}/g, v.company);
+
+  const handleChoice = async choice => {
+    // immediate UI switch
+    const now = Date.now();
+    const responseTime = now - (displayedAt || now);
+    setStage('question');
+    setDisplayedAt(Date.now());
+
+    const slot = order[selected];
+    const amt  = AMOUNTS[week-1][slot];
+    const comp = COMPANIES[slot];
+    const princ= PRINCIPLES_LIST[slot];
+    const id   = `${week}-${selected+1}`;
+    const tpl  = PRINCIPLES[princ][week-1];
+    const emailText = formatText(tpl, {
       name: 'Valued',
-      invoice_id: `${week}-${idx + 1}`,
+      invoice_id: id,
       amount: amt,
       due_date: dueDate,
       company: comp.name
     });
-  
-    return (
-      <div className="panel email-panel split">
-        <aside className="sidebar">
-          {COMPANIES.map((c, i) => (
-            <div
-              key={i}
-              className={`sidebar-item ${idx === i ? 'active' : ''} ${responses[i]?.answered ? 'answered' : ''}`}
-              onClick={() => stage === 'view' && !responses[i]?.answered && setIdx(i)}
-            >
-              <img src={c.logo_url} className="sidebar-logo" alt={c.name} />
-              <div>Email {i + 1}</div>
-            </div>
-          ))}
-        </aside>
-  
-        <section className="main-content">
-          {stage === 'view' && (
-            <>
-              <header className="email-header">
-                <img src={comp.logo_url} className="company-logo" alt={comp.name} />
-                <div>
-                  <h3>{comp.name}</h3>
-                  <p>{comp.address}</p>
-                </div>
-              </header>
-  
-              <article className="email-box">
-                <pre>{emailText}</pre>
-              </article>
-  
-              {!responses[idx]?.answered ? (
-                <div className="btn-row">
-                  <button onClick={() => handleChoice('pay')} disabled={amt > budget}>
-                    Pay now
-                  </button>
-                  <button onClick={() => handleChoice('wait')}>
-                    Wait a week
-                  </button>
-                </div>
-              ) : (
-                <div className="answered-note">
-                  You have already answered this invoice.
-                </div>
-              )}
-            </>
-          )}
-  
-          {stage === 'question' && (
-            <Questionnaire onSubmit={handleQuestionnaire} />
-          )}
-        </section>
-      </div>
-    );
-  }
-  
-  
+
+    if (choice==='pay') onPayment(amt);
+
+    await API.post('/email', {
+      user: userId,
+      sessionId,                     // include session
+      week,
+      emailIndex: selected,
+      behaviorType: princ,
+      amount: amt,
+      choice,
+      timestamp: new Date(),
+      emailText,
+      companyLogo: comp.logo_url,
+      companyAddress: comp.address,
+      displayedAt : new Date(displayedAt),
+      responseTime
+    });
+  };
+
+  const handleQuestionnaire = async answers => {
+    // save answers
+    await API.post('/response', {
+      user: userId,
+      sessionId,                     // include session
+      week,
+      emailIndex: selected,
+      questions: answers
+    });
+    // mark answered
+    setResponses(rs => { const c=[...rs]; c[selected].answered=true; return c; });
+    setStage('view');
+
+    // move next or finish week
+    setTimeout(() => {
+      const next = responses.findIndex((r,i)=>i>selected && r.choice!==null && !r.answered);
+      if (next!==-1) setSelected(next);
+      else if (responses.every(r=>r.choice!==null && r.answered)) onWeekComplete();
+    },0);
+  };
+
+  const slot = order[selected];
+  const comp = COMPANIES[slot];
+  const amt  = AMOUNTS[week-1][slot];
+  const princ= PRINCIPLES_LIST[slot];
+  const raw  = PRINCIPLES[princ][week-1];
+  const emailText = formatText(raw, {
+    name: 'Valued',
+    invoice_id: `${week}-${selected+1}`,
+    amount: amt,
+    due_date: dueDate,
+    company: comp.name
+  });
+
+  return (
+    <div className="panel email-panel split">
+      <aside className="sidebar">
+        {order.map((slotIdx,i)=>(
+          <div
+            key={i}
+            className={`
+              sidebar-item
+              ${i===selected?'active':''}
+              ${responses[i]?.answered?'answered':''}
+            `}
+            onClick={()=> stage==='view' && !responses[i]?.answered && setSelected(i)}
+          >
+            <img src={COMPANIES[slotIdx].logo_url} className="sidebar-logo" alt="" />
+            <div>Email {i+1}</div>
+          </div>
+        ))}
+      </aside>
+
+      <section className="main-content">
+        <ProgressBar week={week} emailIndex = {selectedIndex} />
+        {stage==='view' ? (
+          <>
+            <header className="email-header">
+              <img src={comp.logo_url} className="company-logo" alt="" />
+              <div><h3>{comp.name}</h3><p>{comp.address}</p></div>
+            </header>
+
+            <article className="email-box">
+              <pre>{emailText}</pre>
+            </article>
+
+            {!responses[selected]?.answered ? (
+              <div className="btn-row">
+                <button onClick={()=>handleChoice('pay')} disabled={amt>budget}>
+                  Pay now
+                </button>
+                <button onClick={()=>handleChoice('wait')}>
+                  Wait a week
+                </button>
+              </div>
+            ) : (
+              <div className="answered-note">
+                You’ve already answered this invoice.
+              </div>
+            )}
+          </>
+        ) : (
+          <Questionnaire onSubmit={handleQuestionnaire} />
+        )}
+      </section>
+    </div>
+  );
+}

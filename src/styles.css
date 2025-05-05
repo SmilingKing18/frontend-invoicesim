@@ -296,3 +296,35 @@ button {
     overflow-wrap: break-word;  /* standard */
     word-break: break-word;     /* aggressively break long words */
   }
+
+
+  .progress-container {
+    margin-bottom: 20px;
+  }
+  .progress-track {
+    background: #ccc;
+    border-radius: 8px;
+    height: 8px;
+    overflow: hidden;
+    margin: 6px 0 12px;
+  }
+  .progress-bar {
+    height: 100%;
+    transition: width 0.5s ease;
+  }
+  .week-bar {
+    background: #00838f;
+  }
+  .email-bar {
+    background: #4caf50;
+  }
+  .label {
+    font-size: 0.9rem;
+    text-align: center;
+    color: #004d40;
+  }
+  .label.small {
+    font-size: 0.75rem;
+    margin-top: 4px;
+  }
+  

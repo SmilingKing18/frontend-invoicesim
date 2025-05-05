@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 const questions = [
   'How urgent did you feel the email was?',
-  'How emotionally aroused did you feel?',
+  'How did the email make you feel (comfort, anxious, stressed)',
   'How persuasive was the email?',
   'How much did you trust the sender?'
 ];

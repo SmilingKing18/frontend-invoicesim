@@ -10,7 +10,7 @@ function App() {
   const [userId, setUserId] = useState(null);
   const [week, setWeek] = useState(1);
   const [budget, setBudget] = useState(1000);
-
+  
   const handleDemographicsNext = id => {
     setUserId(id);
     setStage('rules');

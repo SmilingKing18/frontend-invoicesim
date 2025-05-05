@@ -3,7 +3,7 @@ import acmeLogo        from '../img/businesslogo.png';
 import brightsideLogo  from '../img/corplogo.png';
 import greenfieldLogo  from '../img/globalcorp.png';
 import novaLogo        from '../img/xcorplogo.png';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import API from '../api';
 import Questionnaire from './Questionnaire';
 import '../styles.css';
@@ -69,14 +69,15 @@ function shuffle(array) {
 }
 
 export default function EmailView({ userId, week, budget, onPayment, onWeekComplete }) {
-  // randomize principle order once
-  const order = useMemo(() => shuffle([0,1,2,3]), []);
+  // Randomize slot order once per mount
+  const order = useMemo(() => shuffle([0, 1, 2, 3]), []);
 
   const [idx, setIdx] = useState(0);
-  const [stage, setStage] = useState('view');
+  const [stage, setStage] = useState('view'); // 'view' or 'question'
   const [responses, setResponses] = useState([]);
   const [dueDate, setDueDate] = useState('');
 
+  // Reset state on week change
   useEffect(() => {
     setResponses(order.map(() => ({ choice: null, answered: false })));
     setIdx(0);
@@ -86,6 +87,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
     setDueDate(dt.toLocaleDateString());
   }, [week, order]);
 
+  // Fill in template placeholders
   const formatText = (tpl, vars) =>
     tpl.replace(/\{name\}/g, vars.name)
        .replace(/\{invoice_id\}/g, vars.invoice_id)
@@ -93,59 +95,66 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
        .replace(/\{due_date\}/g, vars.due_date)
        .replace(/\{company\}/g, vars.company);
 
+  // Handle Pay or Wait choice
   const handleChoice = async choice => {
-    const slot = order[idx];
-    const amt = AMOUNTS[week - 1][slot];
+    const slot      = order[idx];
+    const amt       = AMOUNTS[week - 1][slot];
     const principle = PRINCIPLES_LIST[slot];
-    const comp = COMPANIES[slot];
+    const comp      = COMPANIES[slot];
     const invoiceId = `${week}-${idx + 1}`;
-    const tpl = PRINCIPLES[principle][week - 1];
+    const tpl       = PRINCIPLES[principle][week - 1];
     const emailText = formatText(tpl, {
       name: 'Valued',
       invoice_id: invoiceId,
-      amount: amt,
-      due_date: dueDate,
-      company: comp.name
+      amount:     amt,
+      due_date:   dueDate,
+      company:    comp.name
     });
 
     if (choice === 'pay') onPayment(amt);
 
-    setResponses(r => {
-      const c = [...r];
-      c[idx] = { choice, answered: false };
-      return c;
+    // Record choice locally and switch to questionnaire
+    setResponses(rs => {
+      const copy = [...rs];
+      copy[idx] = { choice, answered: false };
+      return copy;
     });
     setStage('question');
 
-    API.post('/email', {
-      user: userId,
+    // Persist to backend
+    await API.post('/email', {
+      user:           userId,
       week,
-      emailIndex: idx,
-      behaviorType: principle,
-      amount: amt,
+      sessionId:      undefined,
+      emailIndex:     idx,
+      behaviorType:   principle,
+      amount:         amt,
       choice,
-      timestamp: new Date(),
+      timestamp:      new Date(),
       emailText,
-      companyLogo: comp.logo_url,
+      companyLogo:    comp.logo_url,
       companyAddress: comp.address
     });
   };
 
-  const handleQuestionnaire = answers => {
-    API.post('/response', {
-      user: userId,
+  // Handle questionnaire submission
+  const handleQuestionnaire = async answers => {
+    await API.post('/response', {
+      user:       userId,
       week,
+      sessionId:  undefined,
       emailIndex: idx,
-      questions: answers
+      questions:  answers
     });
 
-    setResponses(r => {
-      const c = [...r];
-      c[idx].answered = true;
-      return c;
+    setResponses(rs => {
+      const copy = [...rs];
+      copy[idx].answered = true;
+      return copy;
     });
     setStage('view');
 
+    // Advance or finish week
     setTimeout(() => {
       const next = responses.findIndex((r, i) => r.choice !== null && !r.answered && i > idx);
       if (next !== -1) setIdx(next);
@@ -153,11 +162,12 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
     }, 0);
   };
 
-  const slot = order[idx];
-  const comp = COMPANIES[slot];
-  const amt = AMOUNTS[week - 1][slot];
+  // Current slot render data
+  const slot      = order[idx];
+  const comp      = COMPANIES[slot];
+  const amt       = AMOUNTS[week - 1][slot];
   const principle = PRINCIPLES_LIST[slot];
-  const rawTpl = PRINCIPLES[principle][week - 1];
+  const rawTpl    = PRINCIPLES[principle][week - 1];
   const emailText = formatText(rawTpl, {
     name: 'Valued',
     invoice_id: `${week}-${idx + 1}`,
@@ -173,7 +183,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
           <div
             key={i}
             className={`sidebar-item ${idx === i ? 'active' : ''} ${responses[i]?.answered ? 'answered' : ''}`}
-            onClick={() => stage === 'view' && !responses[i]?.answered && setIdx(i)}
+            onClick={() => stage==='view' && !responses[i]?.answered && setIdx(i)}
           >
             <img src={COMPANIES[slotIdx].logo_url} className="sidebar-logo" alt={COMPANIES[slotIdx].name} />
             <div>Email {i + 1}</div>
@@ -183,6 +193,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
 
       <section className="main-content">
         <ProgressBar week={week} emailIndex={idx} />
+
         {stage === 'view' && (
           <>
             <header className="email-header">
@@ -207,14 +218,11 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
                 </button>
               </div>
             ) : (
-              <div className="answered-note">
-                You have already answered this invoice.
-              </div>
+              <div className="answered-note">You have already answered this invoice.</div>
             )}
           </>
         )}
-
-        {stage === 'question' && <Questionnaire onSubmit={handleQuestionnaire} />}
+        {stage === 'question' && <Questionnaire onSubmit={handleQuestionnaire}/>}  
       </section>
     </div>
   );

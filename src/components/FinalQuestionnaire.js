@@ -52,31 +52,36 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
   useEffect(() => {
     if (!submitted) return;
     (async () => {
-      const res = await API.get(`/user/${userId}/data`);
-      const { emailRecords, responses } = res.data;
+      let earned = [];
+      try {
+        const res = await API.get(`/user/${userId}/data`);
+        const { emailRecords, responses } = res.data;
 
-      // Quick Payer: any response under 10s
-      const qp = emailRecords.some(r => r.responseTime < 10000);
-      // Trust Builder: trust scores (4th question) all >= 4
-      const tb = responses.every(r => r.questions[3] >= 4);
-      // Risk Taker: waited 3+ times
-      const rt = emailRecords.filter(r => r.choice === 'wait').length >= 3;
-      // Social Conformist: paid a 'social proof' invoice
-      const sc = emailRecords.some(r => r.behaviorType === 'social proof' && r.choice === 'pay');
-      // Authority Adherent: paid a loss aversion invoice
-      const aa = emailRecords.some(r => r.behaviorType === 'loss aversion' && r.choice === 'pay');
-      // Balanced Budgeter: track weekly budgets
-      const weekly = [1000,1000,1000];
-      emailRecords.forEach(r => { if(r.choice==='pay') weekly[r.week-1] -= r.amount; });
-      let carry = 1000;
-      const ends = weekly.map((spent,i) => { const end = carry - spent; carry = end + (i<2?1000:0); return end; });
-      const bb = ends.every(e => e >= 250);
-      // Final Frontier: always true if reached here
-      const ff = true;
+        // Quick Payer
+        const qp = emailRecords.some(r => r.responseTime < 10000);
+        // Trust Builder
+        const tb = responses.every(r => r.questions[3] >= 4);
+        // Risk Taker
+        const rt = emailRecords.filter(r => r.choice === 'wait').length >= 3;
+        // Social Conformist
+        const sc = emailRecords.some(r => r.behaviorType === 'social proof' && r.choice === 'pay');
+        // Authority Adherent
+        const aa = emailRecords.some(r => r.behaviorType === 'loss aversion' && r.choice === 'pay');
+        // Balanced Budgeter
+        const weekly = [1000,1000,1000];
+        emailRecords.forEach(r => { if(r.choice==='pay') weekly[r.week-1] -= r.amount; });
+        let carry = 1000;
+        const ends = weekly.map((spent,i) => { const end = carry - spent; carry = end + (i<2?1000:0); return end; });
+        const bb = ends.every(e => e >= 250);
+        // Final Frontier always true
+        const ff = true;
 
-      // Build earned badge list
-      const metrics = { quickPayer: qp, trustBuilder: tb, riskTaker: rt, socialConformist: sc, authorityAdherent: aa, balancedBudgeter: bb, finalFrontier: ff };
-      const earned = badgeDefinitions.filter(b => metrics[b.key]);
+        const metrics = { quickPayer: qp, trustBuilder: tb, riskTaker: rt, socialConformist: sc, authorityAdherent: aa, balancedBudgeter: bb, finalFrontier: ff };
+        earned = badgeDefinitions.filter(b => metrics[b.key]);
+      } catch (err) {
+        console.error('Badge compute failed, defaulting final frontier', err);
+        earned = badgeDefinitions.filter(b => b.key === 'finalFrontier');
+      }
       setBadges(earned);
     })();
   }, [submitted, userId]);

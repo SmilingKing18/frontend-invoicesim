@@ -50,7 +50,12 @@ export default function FinalQuestionnaire({ userId, sessionId, metrics }) {
     setData(d => ({ ...d, [key]: e.target.value }));
 
   const submit = async () => {
-    await API.post('/final', { user: userId, sessionId, final: data });
+    console.log('🔔 Final submit triggered:', data);
+    try {
+      await API.post('/final', { user: userId, sessionId, final: data });
+    } catch (err) {
+      console.error('Final post failed, still proceeding', err);
+    }
     setSubmitted(true);
   };
 

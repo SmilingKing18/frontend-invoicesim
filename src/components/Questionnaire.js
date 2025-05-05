@@ -20,15 +20,15 @@ export default function Questionnaire({ onSubmit }) {
     setAnswers(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = e => {
-    e.preventDefault();
+  const handleSubmit = () => {
+    console.log('Questionnaire submit', answers);
     // Convert answers object to array in question order
     const result = questions.map(q => answers[q.key]);
     onSubmit(result);
   };
 
   return (
-    <form className="panel questionnaire" onSubmit={handleSubmit}>
+    <div className="panel questionnaire">
       <h2>Rate this email</h2>
       {questions.map(q => (
         <div key={q.key} className="q-row">
@@ -44,7 +44,9 @@ export default function Questionnaire({ onSubmit }) {
           </div>
         </div>
       ))}
-      <button type="submit">Submit</button>
-    </form>
+      <button type="button" onClick={handleSubmit}>
+        Submit
+      </button>
+    </div>
   );
 }

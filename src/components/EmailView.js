@@ -1,16 +1,28 @@
 // src/components/EmailView.js
-import acmeLogo        from '../img/businesslogo.png';
-import brightsideLogo  from '../img/corplogo.png';
-import greenfieldLogo  from '../img/globalcorp.png';
-import novaLogo        from '../img/xcorplogo.png';
+// src/components/EmailView.js
 import React, { useState, useEffect, useMemo } from 'react';
 import API from '../api';
 import Questionnaire from './Questionnaire';
 import '../styles.css';
 import ProgressBar from './ProgressBar';
 
+// Logos
+import acmeLogo from '../img/businesslogo.png';
+import brightsideLogo from '../img/corplogo.png';
+import greenfieldLogo from '../img/globalcorp.png';
+import novaLogo from '../img/xcorplogo.png';
 
-// 1) Company list
+// Fisher-Yates shuffle
+function shuffle(array) {
+  const a = [...array];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+
 // 1) Company list
 const COMPANIES = [
     { name: 'Acme Solutions, Inc.',    logo_url: acmeLogo,       address: '123 Elm St, Metropolis, NY' },
@@ -58,15 +70,6 @@ const AMOUNTS = [
   [400, 500, 600, 800]    // Week 3
 ];
 
-// Fisher-Yates shuffle
-function shuffle(array) {
-  const a = [...array];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 export default function EmailView({ userId, week, budget, onPayment, onWeekComplete }) {
   // Randomize slot order once per mount
@@ -113,19 +116,16 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
 
     if (choice === 'pay') onPayment(amt);
 
-    // Record choice locally and switch to questionnaire
-    setResponses(rs => {
-      const copy = [...rs];
+    setResponses(prev => {
+      const copy = [...prev];
       copy[idx] = { choice, answered: false };
       return copy;
     });
     setStage('question');
 
-    // Persist to backend
     await API.post('/email', {
       user:           userId,
       week,
-      sessionId:      undefined,
       emailIndex:     idx,
       behaviorType:   principle,
       amount:         amt,
@@ -139,35 +139,28 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
 
   // Handle questionnaire submission
   const handleQuestionnaire = async answers => {
-    // persist answers
     await API.post('/response', {
       user:       userId,
       week,
-      sessionId:  undefined,
       emailIndex: idx,
       questions:  answers
     });
 
-    // mark this one answered and determine next
-    setResponses(prev => {
-      const copy = [...prev];
-      copy[idx].answered = true;
+    const newResponses = [...responses];
+    newResponses[idx].answered = true;
+    setResponses(newResponses);
 
-      // find next slot with a choice made but unanswered
-      const next = copy.findIndex(r => r.choice !== null && !r.answered);
-      if (next !== -1) {
-        setIdx(next);
-        setStage('view');
-      } else {
-        // all done for week
-        onWeekComplete();
-      }
-
-      return copy;
-    });
+    // Determine next slot where choice == null
+    const nextUnchosen = newResponses.findIndex(r => r.choice === null);
+    if (nextUnchosen !== -1) {
+      setIdx(nextUnchosen);
+      setStage('view');
+    } else {
+      onWeekComplete();
+    }
   };
 
-  // Current slot render data
+  // Data for current slot
   const slot      = order[idx];
   const comp      = COMPANIES[slot];
   const amt       = AMOUNTS[week - 1][slot];
@@ -181,28 +174,41 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
     company: comp.name
   });
 
+  // Count completed emails
+  const completedCount = responses.filter(r => r.choice !== null).length;
+
   return (
     <div className="panel email-panel split">
       <aside className="sidebar">
         {order.map((slotIdx, i) => (
           <div
             key={i}
-            className={`sidebar-item ${idx === i ? 'active' : ''} ${responses[i]?.answered ? 'answered' : ''}`}
+            className={
+              `sidebar-item ${idx === i ? 'active' : ''} ${responses[i]?.answered ? 'answered' : ''}`
+            }
             onClick={() => stage==='view' && !responses[i]?.answered && setIdx(i)}
           >
-            <img src={COMPANIES[slotIdx].logo_url} className="sidebar-logo" alt={COMPANIES[slotIdx].name} />
+            <img
+              src={COMPANIES[slotIdx].logo_url}
+              className="sidebar-logo"
+              alt={COMPANIES[slotIdx].name}
+            />
             <div>Email {i + 1}</div>
           </div>
         ))}
       </aside>
 
       <section className="main-content">
-        <ProgressBar week={week} answeredCount={responses.filter(r => r.answered).length} />
+        <ProgressBar week={week} completedEmails={completedCount} />
 
         {stage === 'view' && (
           <>
             <header className="email-header">
-              <img src={comp.logo_url} className="company-logo" alt={comp.name} />
+              <img
+                src={comp.logo_url}
+                className="company-logo"
+                alt={comp.name}
+              />
               <div>
                 <h3>{comp.name}</h3>
                 <p>{comp.address}</p>
@@ -215,7 +221,10 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
 
             {!responses[idx]?.answered ? (
               <div className="btn-row">
-                <button onClick={() => handleChoice('pay')} disabled={amt > budget}>
+                <button
+                  onClick={() => handleChoice('pay')}
+                  disabled={amt > budget}
+                >
                   Pay now
                 </button>
                 <button onClick={() => handleChoice('wait')}>
@@ -223,11 +232,16 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
                 </button>
               </div>
             ) : (
-              <div className="answered-note">You have already answered this invoice.</div>
+              <div className="answered-note">
+                You have already answered this invoice.
+              </div>
             )}
           </>
         )}
-        {stage === 'question' && <Questionnaire onSubmit={handleQuestionnaire}/>}  
+
+        {stage === 'question' && (
+          <Questionnaire onSubmit={handleQuestionnaire} />
+        )}
       </section>
     </div>
   );

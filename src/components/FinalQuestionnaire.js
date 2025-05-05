@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 import API from '../api';
 import '../styles.css';
 
-import quickIcon   from '../badges/quick.png';
-import trustIcon   from '../badges/trust.png';
-import riskIcon    from '../badges/risk.png';
-import socialIcon  from '../badges/social.png';
-import authIcon    from '../badges/auth.png';
-import budgetIcon  from '../badges/budget.png';
-import finalIcon   from '../badges/final.png';
+import quickIcon   from '../img/badges/quick.png';
+import trustIcon   from '../img/badges/trust.png';
+import riskIcon    from '../img/badges/risk.png';
+import socialIcon  from '../img/badges/social.png';
+import authIcon    from '../img/badges/auth.png';
+import budgetIcon  from '../img/badges/budget.png';
+import finalIcon   from '../img/badges/final.png';
 
 export default function FinalQuestionnaire({ userId, sessionId, metrics }) {
   const [data, setData] = useState({
@@ -30,8 +30,24 @@ export default function FinalQuestionnaire({ userId, sessionId, metrics }) {
       const tb = responses.every(r => r.questions[3] >= 4);
       const rt = emailRecords.filter(r => r.choice === 'wait').length >= 3;
       const sc = emailRecords.some(r => r.behaviorType === 'social proof' && r.choice === 'pay');
-      const aa = false;
-      const bb = false;
+      // Authority Adherent: paid at least one 'loss aversion' invoice
+      const aa = emailRecords.some(r => r.behaviorType === 'loss aversion' && r.choice === 'pay');
+      // Balanced Budgeter: ended each week with ≥25% of budget left
+      const weeklyBudgets = [1000, 1000, 1000];
+      emailRecords.forEach(r => {
+        if (r.choice === 'pay') {
+          weeklyBudgets[r.week - 1] -= r.amount;
+        }
+      });
+      // add the 1000 rollover per week
+      let carry = 1000;
+      const budgets = weeklyBudgets.map((spent, i) => {
+        const end = carry - spent;
+        carry = end + (i < 2 ? 1000 : 0);
+        return end;
+      });
+      const bb = budgets.every(b => b >= 250);
+      // Final Frontier: completed all 3 weeks + final quiz
       const ff = true;
 
       setBadges([
@@ -120,3 +136,4 @@ export default function FinalQuestionnaire({ userId, sessionId, metrics }) {
     </div>
   );
 }
+

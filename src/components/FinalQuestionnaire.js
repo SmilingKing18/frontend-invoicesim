@@ -1,5 +1,4 @@
-// src/components/FinalQuestionnaire.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import API from '../api';
 import '../styles.css';
 
@@ -11,7 +10,7 @@ import authIcon    from '../img/badges/auth.png';
 import budgetIcon  from '../img/badges/budget.png';
 import finalIcon   from '../img/badges/final.png';
 
-export default function FinalQuestionnaire({ userId, sessionId, metrics }) {
+export default function FinalQuestionnaire({ userId, sessionId, metrics = {} }) {
   const [data, setData] = useState({
     countdownText: '',
     q1: '',
@@ -88,7 +87,7 @@ export default function FinalQuestionnaire({ userId, sessionId, metrics }) {
 
       <div className="badge-grid">
         {badgeDefinitions
-          .filter(b => metrics[b.key])
+          .filter(b => metrics && metrics[b.key])
           .map((b, i) => (
             <div key={i} className="badge-card">
               <img src={b.icon} className="badge-icon" alt={b.title} />

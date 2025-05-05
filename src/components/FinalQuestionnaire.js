@@ -55,13 +55,12 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
       let earned = [];
       try {
         const res = await API.get(`/user/${userId}/data`);
+        const { emailRecords, responses } = res.data;
         console.log('🏷️ emailRecords:', emailRecords);
         console.log('✉️ responses:',     responses);
-        const { emailRecords, responses } = res.data;
 
         // Quick Payer
         const qp = emailRecords.some(r => r.responseTime < 10000);
-        console.log('qp (quickPayer):', qp);
         // Trust Builder
         const tb = responses.every(r => r.questions[3] >= 4);
         // Risk Taker

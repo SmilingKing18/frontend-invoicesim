@@ -39,13 +39,23 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
 
   // Submit final questionnaire
   const handleFinish = async () => {
+    // build an array of just the badge keys the user earned
+    const awardKeys = badges.map(b => b.key);
+
     try {
-      await API.post('/final', { user: userId, sessionId, final: data, awards: metrics });
+      await API.post('/final', {
+        user:      userId,
+        sessionId,
+        final:     data,
+        awards:    awardKeys
+      });
     } catch (err) {
-      console.error('Final post failed, proceeding', err);
-    }
-    setSubmitted(true);
-  };
+      console.error('Final post failed, proceeding anyway', err);
+  }
+
+  // then flip into the “submitted” state
+  setSubmitted(true);
+};
 
   // Compute badges after submission
   useEffect(() => {

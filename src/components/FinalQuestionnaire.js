@@ -55,10 +55,13 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
       let earned = [];
       try {
         const res = await API.get(`/user/${userId}/data`);
+        console.log('🏷️ emailRecords:', emailRecords);
+        console.log('✉️ responses:',     responses);
         const { emailRecords, responses } = res.data;
 
         // Quick Payer
         const qp = emailRecords.some(r => r.responseTime < 10000);
+        console.log('qp (quickPayer):', qp);
         // Trust Builder
         const tb = responses.every(r => r.questions[3] >= 4);
         // Risk Taker
@@ -133,21 +136,17 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
       <div className="awards-box">
         <h3>Awards Won!</h3>
         <div className="badge-grid horizontal">
-        <div className="badge-grid horizontal">
-         {badgeDefinitions.map((b,i) => {
-          const earned = badges.some(e => e.key===b.key);
-        return (
-          <div
-          key={i}
-          className={`badge-card ${earned ? '' : 'unearned'}`}
-        >
-         <img src={b.icon} className="badge-icon" alt={b.title}/>
-         <strong>{b.title}</strong>
-         <p>{b.desc}</p>
-       </div>
-     );
-   })}
- </div>
+          {badges.length > 0 ? (
+            badges.map((b,i) => (
+              <div key={i} className="badge-card">
+                <img src={b.icon} className="badge-icon" alt={b.title} />
+                <strong>{b.title}</strong>
+                <p>{b.desc}</p>
+              </div>
+            ))
+          ) : (
+            <p>No awards earned this time.</p>
+          )}
         </div>
       </div>
     </div>

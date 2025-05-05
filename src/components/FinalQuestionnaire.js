@@ -20,6 +20,7 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
     q3: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [metrics, setMetrics] = useState({});
   const [badges, setBadges] = useState([]);
 
   // Badge definitions
@@ -39,7 +40,7 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
   // Submit final questionnaire
   const handleFinish = async () => {
     try {
-      await API.post('/final', { user: userId, sessionId, final: data });
+      await API.post('/final', { user: userId, sessionId, final: data, awards: metrics });
     } catch (err) {
       console.error('Final post failed, proceeding', err);
     }
@@ -86,6 +87,7 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
           finalFrontier:     ff
         };
         const earned = badgeDefinitions.filter(b => metrics[b.key] || metrics[b.key === 'finalFrontier' ? 'ff' : b.key]);
+        setMetrics(metricsObj); 
         setBadges(earned);
       } catch (err) {
         console.error('Badge compute failed', err);

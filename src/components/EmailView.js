@@ -68,7 +68,6 @@ function shuffle(array) {
   return a;
 }
 
-
 export default function EmailView({ userId, week, budget, onPayment, onWeekComplete }) {
   // randomize principle order once
   const order = useMemo(() => shuffle([0,1,2,3]), []);

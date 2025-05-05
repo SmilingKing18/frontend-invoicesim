@@ -139,7 +139,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
 
   // Handle questionnaire submission
   const handleQuestionnaire = async answers => {
-    // persist responses
+    // persist answers
     await API.post('/response', {
       user:       userId,
       week,
@@ -148,21 +148,23 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
       questions:  answers
     });
 
-    // mark answered and advance
-    setResponses(rs => {
-      const copy = [...rs];
+    // mark this one answered and determine next
+    setResponses(prev => {
+      const copy = [...prev];
       copy[idx].answered = true;
+
+      // find next slot with a choice made but unanswered
+      const next = copy.findIndex(r => r.choice !== null && !r.answered);
+      if (next !== -1) {
+        setIdx(next);
+        setStage('view');
+      } else {
+        // all done for week
+        onWeekComplete();
+      }
+
       return copy;
     });
-
-    // find next unanswered
-    const next = responses.findIndex(r => !r.answered);
-    if (next !== -1) {
-      setIdx(next);
-      setStage('view');
-    } else {
-      onWeekComplete();
-    }
   };
 
   // Current slot render data

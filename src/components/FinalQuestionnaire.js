@@ -75,7 +75,16 @@ export default function FinalQuestionnaire({ userId, sessionId }) {
         const bb = ends.every(e => e >= 250);
         const ff = true;
 
-        const metrics = { qp, tb, rt, sc, aa, bb, ff };
+        // Map computed flags to badge keys
+        const metrics = {
+          quickPayer:        qp,
+          trustBuilder:      tb,
+          riskTaker:         rt,
+          socialConformist:  sc,
+          authorityAdherent: aa,
+          balancedBudgeter:  bb,
+          finalFrontier:     ff
+        };
         const earned = badgeDefinitions.filter(b => metrics[b.key] || metrics[b.key === 'finalFrontier' ? 'ff' : b.key]);
         setBadges(earned);
       } catch (err) {

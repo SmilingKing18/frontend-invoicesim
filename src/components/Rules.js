@@ -10,9 +10,11 @@ export default function Rules({ onNext }) {
         <p>
           Read each invoice carefully, invoice amounts are based so that you 
           can only pay ~2–3 per week.
-          Choose the invoices you pay based on which ones you feel you should pay first.
-          Which ones you pay first vs last are taken into account. 
-        </p>
+          </p>
+        <p>
+          Choose the invoices you pay based on which ones you feel you should pay first.</p>  
+        <p>
+         Which ones you pay first vs last are taken into account.</p>  
         <p>
           At the bottom of each invoice: “Pay now” (deducts from your budget)
           or “Wait a week.”

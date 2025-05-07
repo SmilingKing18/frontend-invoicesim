@@ -39,13 +39,11 @@ function computePlaceholders({ emailDate, dueDate, amount, emailRecords = [], re
   const pays = responses.filter(r => r.choice === 'pay').length;
   const spots_left = Math.max(0, 10 - pays);
 
-  const peer_pct = responses.length ? Math.round((pays / responses.length) * 100) : 0;
-  const regional_pct = peer_pct;
   const final_pct = emailRecords.length ? Math.round((emailRecords.filter(r => r.choice === 'pay').length / emailRecords.length) * 100) : 0;
   const testimonial = '"Paid in 2 minutes—super easy!" – Jean D.';
 
   return { late_fee, discount_value, discount_days, discount_hours, days_left, hours_left,
-           spots_left, peer_pct, regional_pct, final_pct, testimonial, discount_deadline, cutoff_timestamp: due.toLocaleString() };
+           spots_left, final_pct, testimonial, discount_deadline, cutoff_timestamp: due.toLocaleString() };
 }
 
 // 1) Company list
@@ -152,12 +150,12 @@ Thank you,
 
   'social proof': [
     // Mild: show current % paid
-    `Subject: Join the {peer_pct}% Who Paid on Time
+    `Subject: Join the 90% Who Paid on Time
 
 Dear {name} Customer,
 
 Invoice #{invoice_id} for €{amount} is due {due_date}.  
-Already, <strong>{peer_pct}% of our customers</strong> have paid on time—join them now to keep your account in good standing.
+Already, <strong>90% of our customers</strong> have paid on time—join them now to keep your account in good standing.
 
 [ PAY NOW ]
 
@@ -165,12 +163,12 @@ Cheers,
 {company} Billing Team`,
 
     // Firm: regional stat + testimonial
-    `Subject: {regional_pct}% of Peers Paid Last Week
+    `Subject: 75% of Peers Paid Last Week
 
 Dear {name} Customer,
 
 Your invoice #{invoice_id} (€{amount}), due {due_date}, is outstanding.  
-Last week, <strong>{regional_pct}% of customers in your area</strong> settled their bills promptly.
+Last week, <strong>75% of customers in your area</strong> settled their bills promptly.
 
 “Paid in 2 minutes—super easy!” – {testimonial}
 
@@ -294,9 +292,26 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
   };
 
   const handleQuestionnaire = async answers => {
-    try{ await API.post('/response',{ user:userId,week,emailIndex:idx,questions:answers }); }catch(e){console.error(e)};
-    setAnswered(prev=>prev.map((a,i)=>i===idx?true:a));
-    if(idx<order.length-1){ setIdx(idx+1); setStage('view'); } else onWeekComplete();
+    // submit responses
+    try {
+      await API.post('/response', { user: userId, week, emailIndex: idx, questions: answers });
+    } catch (err) {
+      console.error('Response post failed', err);
+    }
+    // mark current as answered and move to next unanswered
+    setAnswered(prev => {
+      const copy = [...prev];
+      copy[idx] = true;
+      // find next unanswered
+      const nextIdx = copy.findIndex(a => !a);
+      if (nextIdx !== -1) {
+        setIdx(nextIdx);
+        setStage('view');
+      } else {
+        onWeekComplete();
+      }
+      return copy;
+    });
   };
 
   const slot = order[idx]; const comp = COMPANIES[slot];
@@ -304,7 +319,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
   const rawTpl = PRINCIPLES[PRINCIPLES_LIST[slot]][week-1];
   const emailText = formatText(rawTpl,{ name:'Valued',invoice_id:`${week}-${idx+1}`,amount:amt,due_date:dueDate,company:comp.name,placeholders:computePlaceholders({ emailDate:new Date(),dueDate:new Date(new Date().setDate(new Date().getDate()+7)),amount:amt,emailRecords:[],responses:[] }) });
 
-  
+
   return (
     <div className="panel email-panel split">
       <aside className="sidebar">
@@ -348,7 +363,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
                 <p>{comp.address}</p>
               </div>
             </header>
-            <article className="email-box"><pre>{emailText}</pre></article>
+            <article className="email-box" dangerouslySetInnerHTML={{ __html: emailText.replace(/\n/g, '<br/>') }} />
             {!answered[idx] ? (
               <div className="btn-row">
                 <button onClick={()=>handleChoice('pay')} disabled={amt>budget}>Pay now</button>

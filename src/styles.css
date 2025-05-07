@@ -391,3 +391,11 @@ button {
   60%  { transform: scale(1.1); opacity: 1; }
   100% { transform: scale(1);   opacity: 1; }
 }
+
+.email-box {
+  /* replace pre with normal flow so HTML tags are rendered */
+  white-space: pre-wrap;
+}
+.email-box strong {
+  font-weight: bold;
+}

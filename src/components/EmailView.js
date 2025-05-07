@@ -20,33 +20,31 @@ function shuffle(array) {
   return a;
 }
 
-function computePlaceholders({ emailDate, dueDate, amount, emailRecords = [], responses = [] }, { spotLimit = 10, discountRate = 0.02, lateFeeRate = 0.05, discountDays = 5 } = {}) {
+function computePlaceholders({ emailDate, dueDate, amount, emailRecords = [], responses = [] }) {
   const now = new Date();
   const due = new Date(dueDate);
   const msLeft = due - now;
-  const daysLeft = Math.max(0, Math.floor(msLeft / 86400000));
-  const hoursLeft = Math.max(0, Math.floor((msLeft % 86400000) / 3600000));
-  const late_fee = +(amount * lateFeeRate).toFixed(2);
-  const discount_value = +(amount * discountRate).toFixed(2);
+  const days_left = Math.max(0, Math.floor(msLeft / 86400000));
+  const hours_left = Math.max(0, Math.floor((msLeft % 86400000) / 3600000));
+  const late_fee = +(amount * 0.05).toFixed(2);
+  const discount_value = +(amount * 0.02).toFixed(2);
 
   const discountDeadline = new Date(emailDate);
-  discountDeadline.setDate(emailDate.getDate() + discountDays);
-  const elapsedDays = Math.floor((now - emailDate) / 86400000);
-  const discount_days = Math.max(0, discountDays - elapsedDays);
+  discountDeadline.setDate(emailDate.getDate() + 5);
+  const discount_deadline = discountDeadline.toLocaleDateString();
+  const discount_days = Math.max(0, Math.ceil((discountDeadline - now) / 86400000));
   const discount_hours = Math.max(0, Math.floor(((discountDeadline - now) % 86400000) / 3600000));
 
   const pays = responses.filter(r => r.choice === 'pay').length;
-  const spots_left = Math.max(0, spotLimit - pays);
+  const spots_left = Math.max(0, 10 - pays);
 
   const peer_pct = responses.length ? Math.round((pays / responses.length) * 100) : 0;
   const regional_pct = peer_pct;
   const final_pct = emailRecords.length ? Math.round((emailRecords.filter(r => r.choice === 'pay').length / emailRecords.length) * 100) : 0;
   const testimonial = '"Paid in 2 minutes—super easy!" – Jean D.';
-  const discount_deadline = discountDeadline.toLocaleDateString();
-  const cutoff_timestamp = due.toLocaleString();
 
-  return { late_fee, discount_value, discount_days, discount_hours, days_left: daysLeft, hours_left: hoursLeft,
-           spots_left, peer_pct, regional_pct, final_pct, testimonial, discount_deadline, cutoff_timestamp };
+  return { late_fee, discount_value, discount_days, discount_hours, days_left, hours_left,
+           spots_left, peer_pct, regional_pct, final_pct, testimonial, discount_deadline, cutoff_timestamp: due.toLocaleString() };
 }
 
 // 1) Company list
@@ -258,7 +256,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
   const order = useMemo(() => shuffle([0,1,2,3]), []);
   const [idx, setIdx] = useState(0);
   const [stage, setStage] = useState('view');
-  const [answered, setAnswered] = useState(() => order.map(() => false));
+  const [answered, setAnswered] = useState(order.map(() => false));
   const [dueDate, setDueDate] = useState('');
 
   useEffect(() => {
@@ -267,69 +265,40 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
     setDueDate(dt.toLocaleDateString());
   }, [week, order]);
 
-  // Format template with core and dynamic placeholders
-  const formatText = (tpl, vars) => {
-    let txt = tpl;
-    ['name','invoice_id','amount','due_date','company'].forEach(key => {
-      const re = new RegExp(`\\{${key}\\}`,'g');
-      const val = key==='amount'? vars.amount.toFixed(2) : vars[key];
-      txt = txt.replace(re, val);
-    });
-    Object.entries(vars.placeholders).forEach(([k,v]) => {
-      txt = txt.replace(new RegExp(`\\{${k}\\}`,'g'), v);
+  const formatText = (tpl, { name, invoice_id, amount, due_date, company, placeholders }) => {
+    let txt = tpl.replace(/\{name\}/g,name)
+                 .replace(/\{invoice_id\}/g,invoice_id)
+                 .replace(/\{amount\}/g,amount.toFixed(2))
+                 .replace(/\{due_date\}/g,due_date)
+                 .replace(/\{company\}/g,company);
+    Object.entries(placeholders).forEach(([k,v])=>{
+      txt = txt.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
     });
     return txt;
   };
 
   const handleChoice = async choice => {
-    const slot = order[idx];
-    const comp = COMPANIES[slot];
-    const principle = PRINCIPLES_LIST[slot];
-    const amt = AMOUNTS[week-1][slot];
+    const slot = order[idx]; const comp = COMPANIES[slot];
+    const principle = PRINCIPLES_LIST[slot]; const amt = AMOUNTS[week-1][slot];
     const invoiceId = `${week}-${idx+1}`;
     const tpl = PRINCIPLES[principle][week-1];
-
-    // compute placeholders inline
-    const placeholders = computePlaceholders({
-      emailDate: new Date(),
-      dueDate: new Date(new Date().setDate(new Date().getDate()+7)),
-      amount: amt,
-      emailRecords: [], // integrate real data if available
-      responses: []
-    });
-
-    const emailText = formatText(tpl, {
-      name: 'Valued', company: comp.name,
-      invoice_id: invoiceId, amount: amt,
-      due_date: dueDate, placeholders
-    });
-
-    if (choice==='pay') onPayment(amt);
+    const placeholders = computePlaceholders({ emailDate:new Date(), dueDate:new Date(new Date().setDate(new Date().getDate()+7)), amount:amt, emailRecords:[], responses:[] });
+    const emailText = formatText(tpl,{ name:'Valued',invoice_id:invoiceId,amount:amt,due_date:dueDate,company:comp.name,placeholders });
+    if(choice==='pay') onPayment(amt);
     setStage('question');
-    try {
-      await API.post('/email', { user: userId, week, emailIndex: idx, behaviorType: principle, amount: amt, choice, timestamp: new Date(), emailText, companyLogo: comp.logo_url, companyAddress: comp.address });
-    } catch (err) {
-      console.error('Email post failed', err);
-    }
+    try{ await API.post('/email',{ user:userId,week,emailIndex:idx,behaviorType:principle,amount:amt,choice,timestamp:new Date(),emailText,companyLogo:comp.logo_url,companyAddress:comp.address }); }catch(e){console.error(e)}
   };
 
   const handleQuestionnaire = async answers => {
-    try {
-      await API.post('/response', { user: userId, week, emailIndex: idx, questions: answers });
-    } catch (err) {
-      console.error('Response post failed', err);
-    }
-    setAnswered(prev => prev.map((a,i) => i===idx?true:a));
-    if (idx < order.length-1) { setIdx(idx+1); setStage('view'); }
-    else onWeekComplete();
+    try{ await API.post('/response',{ user:userId,week,emailIndex:idx,questions:answers }); }catch(e){console.error(e)};
+    setAnswered(prev=>prev.map((a,i)=>i===idx?true:a));
+    if(idx<order.length-1){ setIdx(idx+1); setStage('view'); } else onWeekComplete();
   };
 
-  const slot = order[idx];
-  const comp = COMPANIES[slot];
+  const slot = order[idx]; const comp = COMPANIES[slot];
   const amt = AMOUNTS[week-1][slot];
   const rawTpl = PRINCIPLES[PRINCIPLES_LIST[slot]][week-1];
-  const emailText = formatText(rawTpl, { name:'Valued', invoice_id:`${week}-${idx+1}`, amount:amt, due_date:dueDate, company:comp.name, placeholders: {} });
-
+  const emailText = formatText(rawTpl,{ name:'Valued',invoice_id:`${week}-${idx+1}`,amount:amt,due_date:dueDate,company:comp.name,placeholders:computePlaceholders({ emailDate:new Date(),dueDate:new Date(new Date().setDate(new Date().getDate()+7)),amount:amt,emailRecords:[],responses:[] }) });
 
   return (
     <div className="panel email-panel split">

@@ -48,7 +48,6 @@ function computePlaceholders({ emailDate, dueDate, amount, emailRecords = [], re
            spots_left, peer_pct, regional_pct, final_pct, testimonial, discount_deadline, cutoff_timestamp: due.toLocaleString() };
 }
 
-
 // 1) Company list
 const COMPANIES = [
     { name: 'Acme Solutions, Inc.',    logo_url: acmeLogo,       address: '123 Elm St, Metropolis, NY' },
@@ -255,6 +254,9 @@ const AMOUNTS = [
 
 
 export default function EmailView({ userId, week, budget, onPayment, onWeekComplete }) {
+  // calculate weekly progress percent
+  const weekPercent = ((week) / 3) * 100;
+
   const order = useMemo(() => shuffle([0,1,2,3]), []);
   const [idx, setIdx] = useState(0);
   const [stage, setStage] = useState('view');
@@ -301,6 +303,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
   const amt = AMOUNTS[week-1][slot];
   const rawTpl = PRINCIPLES[PRINCIPLES_LIST[slot]][week-1];
   const emailText = formatText(rawTpl,{ name:'Valued',invoice_id:`${week}-${idx+1}`,amount:amt,due_date:dueDate,company:comp.name,placeholders:computePlaceholders({ emailDate:new Date(),dueDate:new Date(new Date().setDate(new Date().getDate()+7)),amount:amt,emailRecords:[],responses:[] }) });
+
   
   return (
     <div className="panel email-panel split">

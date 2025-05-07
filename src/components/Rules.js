@@ -8,8 +8,10 @@ export default function Rules({ onNext }) {
         <p>You start with 1000&nbsp;€.</p>
         <p>4 invoices per week for 3 weeks.</p>
         <p>
-          Invoice amounts rise each week, and your budget will not cover
-          all four—so you can only pay ~2–3 per week.
+          Read each invoice carefully, invoice amounts are based so that you 
+          can only pay ~2–3 per week.
+          Choose the invoices you pay based on which ones you feel you should pay first.
+          Which ones you pay first vs last are taken into account. 
         </p>
         <p>
           At the bottom of each invoice: “Pay now” (deducts from your budget)
@@ -23,7 +25,8 @@ export default function Rules({ onNext }) {
           Weeks 2 &amp; 3 use new invoice amounts and adapt based on your
           prior payments.
         </p>
-        <p>Final questionnaire at the very end.</p>
+        <p>Final questionnaire at the very end. You'll gain badges based on how you played
+        </p>
       </div>
       <button onClick={onNext}>Start</button>
     </div>

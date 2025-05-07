@@ -20,6 +20,34 @@ function shuffle(array) {
   return a;
 }
 
+function computePlaceholders({ emailDate, dueDate, amount, emailRecords = [], responses = [] }, { spotLimit = 10, discountRate = 0.02, lateFeeRate = 0.05, discountDays = 5 } = {}) {
+  const now = new Date();
+  const due = new Date(dueDate);
+  const msLeft = due - now;
+  const daysLeft = Math.max(0, Math.floor(msLeft / 86400000));
+  const hoursLeft = Math.max(0, Math.floor((msLeft % 86400000) / 3600000));
+  const late_fee = +(amount * lateFeeRate).toFixed(2);
+  const discount_value = +(amount * discountRate).toFixed(2);
+
+  const discountDeadline = new Date(emailDate);
+  discountDeadline.setDate(emailDate.getDate() + discountDays);
+  const elapsedDays = Math.floor((now - emailDate) / 86400000);
+  const discount_days = Math.max(0, discountDays - elapsedDays);
+  const discount_hours = Math.max(0, Math.floor(((discountDeadline - now) % 86400000) / 3600000));
+
+  const pays = responses.filter(r => r.choice === 'pay').length;
+  const spots_left = Math.max(0, spotLimit - pays);
+
+  const peer_pct = responses.length ? Math.round((pays / responses.length) * 100) : 0;
+  const regional_pct = peer_pct;
+  const final_pct = emailRecords.length ? Math.round((emailRecords.filter(r => r.choice === 'pay').length / emailRecords.length) * 100) : 0;
+  const testimonial = '"Paid in 2 minutes—super easy!" – Jean D.';
+  const discount_deadline = discountDeadline.toLocaleDateString();
+  const cutoff_timestamp = due.toLocaleString();
+
+  return { late_fee, discount_value, discount_days, discount_hours, days_left: daysLeft, hours_left: hoursLeft,
+           spots_left, peer_pct, regional_pct, final_pct, testimonial, discount_deadline, cutoff_timestamp };
+}
 
 // 1) Company list
 const COMPANIES = [
@@ -30,26 +58,183 @@ const COMPANIES = [
   ];
   
 // 2) Behavioral templates (mild / firm / final)
-const PRINCIPLES = {
+export const PRINCIPLES = {
   'loss aversion': [
-    `Dear {name} Customer,\n\nPlease find attached invoice #{invoice_id} for €{amount}, due on {due_date}.\n\nWe kindly remind you that settling this amount by the due date will help you avoid any late fees. Timely payments ensure uninterrupted service and protect your credit standing.\n\nIf you need any assistance or wish to discuss payment options, please reach out at your earliest convenience.\n\nBest regards,\n{company} Billing Team`,
-    `Dear {name} Customer,\n\nThis is a reminder that invoice #{invoice_id} for €{amount}, due on {due_date}, has not yet been paid.\n\nPlease note that a late fee of 5% will be applied if payment is not received within 48 hours. To prevent any additional charges, we urge you to remit payment promptly.\n\nWe appreciate your prompt attention to this matter and are available to help if you encounter any issues.\n\nSincerely,\n{company} Billing Team`,
-    `Dear {name} Customer,\n\nFINAL NOTICE: Invoice #{invoice_id} for €{amount}, originally due on {due_date}, remains outstanding.\n\nImmediate payment is required to avoid suspension of your account and referral to collections. Please make payment today to prevent further action.\n\nThank you for your urgent attention.\n\nRegards,\n{company} Billing Team`
+    // Mild: frame purely as loss, quantify pain
+    `Subject: Avoid a €{late_fee} Late Fee by {due_date}
+
+Dear {name} Customer,
+
+Invoice #{invoice_id} for €{amount} is due {due_date}.  
+If you don’t pay by {due_date}, you will incur a €{late_fee} late fee.  
+
+<strong>Pay before {due_date} to avoid losing €{late_fee}.</strong>
+
+[ PAY NOW ]
+
+Best regards,  
+{company} Billing Team`,
+
+    // Firm: countdown + explicit loss
+    `Subject: Only {days_left} Days Left to Avoid €{late_fee}
+
+Dear {name} Customer,
+
+Your invoice #{invoice_id} for €{amount} was due {due_date} and remains unpaid.  
+You have <strong>{days_left} days, {hours_left} hours</strong> to pay before a €{late_fee} fee is added automatically.
+
+Failure to pay by {cutoff_timestamp} will cost you €{late_fee}.
+
+[ PAY NOW ]
+
+Sincerely,  
+{company} Billing Team`,
+
+    // Final: urgent single sentence, immediate action
+    `Subject: FINAL NOTICE – €{late_fee} Fee Imminent
+
+Dear {name} Customer,
+
+FINAL ALERT: Invoice #{invoice_id} (€{amount}), due {due_date}, remains unpaid.  
+Pay within <strong>12 hours</strong> or incur a €{late_fee} fee immediately and risk service suspension.
+
+[ PAY NOW ]
+
+Regards,  
+{company} Billing Team`
   ],
+
   'scarcity': [
-    `Dear {name} Customer,\n\nYour invoice #{invoice_id} for €{amount}, due on {due_date}, is ready for payment.\n\nAs a token of appreciation, we’re offering a 2% early-payment discount for those who settle within 5 days. This limited-time offer helps you save and supports our operations.\n\nDon’t miss out—take advantage of this benefit by paying early.\n\nWarm regards,\n{company} Billing Team`,
-    `Dear {name} Customer,\n\nInvoice #{invoice_id} for €{amount} is due on {due_date}.\n\nOnly 10 spots remain for our early-bird discount—act quickly to secure your savings. Once those spots are gone, the standard amount applies.\n\nWe value your business and encourage you to pay now to enjoy this exclusive rate.\n\nBest,\n{company} Billing Team`,
-    `Dear {name} Customer,\n\nURGENT: Invoice #{invoice_id} for €{amount}, due on {due_date}, is pending.\n\nThis is your last chance to qualify for our 2% early-payment discount. After today, that opportunity expires and late fees will apply.\n\nPlease remit payment immediately to lock in your savings.\n\nThank you,\n{company} Billing Team`
+    // Mild: limited-time discount with countdown
+    `Subject: 2% Discount Expires in {discount_days} Days
+
+Dear {name} Customer,
+
+Invoice #{invoice_id} for €{amount}, due {due_date}, qualifies for a 2% early-payment discount.  
+Offer expires in <strong>{discount_days} days, {discount_hours} hours</strong>.
+
+<strong>Lock in your savings of €{discount_value} by paying before {discount_deadline}.</strong>
+
+[ PAY NOW ]
+
+Warm regards,  
+{company} Billing Team`,
+
+    // Firm: dynamic slots remaining
+    `Subject: Only {spots_left} Discount Spots Remain
+
+Dear {name} Customer,
+
+Invoice #{invoice_id} (€{amount}) is due {due_date}.  
+We are down to the last <strong>{spots_left} early-bird spots</strong> for 2% off.
+
+Once these are gone, you’ll pay the full amount. Save €{discount_value} by acting now.
+
+[ SECURE MY DISCOUNT ]
+
+Best,  
+{company} Billing Team`,
+
+    // Final: true last-chance final notice
+    `Subject: LAST CHANCE – Final Discount Expires Today
+
+Dear {name} Customer,
+
+URGENT: Invoice #{invoice_id} (€{amount}), due {due_date}, is pending.  
+This is your very last chance to get 2% off (€{discount_value}). After today, that offer is gone forever.
+
+<strong>Pay now to lock in your savings.</strong>
+
+[ PAY NOW ]
+
+Thank you,  
+{company} Billing Team`
   ],
+
   'social proof': [
-    `Dear {name} Customer,\n\nInvoice #{invoice_id} for €{amount} is due on {due_date}.\n\nAlready, over 60% of our clients have paid on time—join them to keep your account in good standing. Early payments help us serve you and your peers better.\n\nWe appreciate your timely action.\n\nCheers,\n{company} Billing Team`,
-    `Dear {name} Customer,\n\nYour invoice #{invoice_id} for €{amount}, due on {due_date}, is outstanding.\n\nLast week, 80% of customers in your region settled their bills promptly. To maintain that community standard, please pay yours today.\n\nThank you for being part of our valued customer network.\n\nRegards,\n{company} Billing Team`,
-    `Dear {name} Customer,\n\nFINAL REMINDER: Invoice #{invoice_id} for €{amount}, due on {due_date}, remains unpaid.\n\nNearly 95% of your peers have already completed their payments—don’t be left behind. Please pay immediately to align with the majority and avoid late fees.\n\nSincerely,\n{company} Billing Team`
+    // Mild: show current % paid
+    `Subject: Join the {peer_pct}% Who Paid on Time
+
+Dear {name} Customer,
+
+Invoice #{invoice_id} for €{amount} is due {due_date}.  
+Already, <strong>{peer_pct}% of our customers</strong> have paid on time—join them now to keep your account in good standing.
+
+[ PAY NOW ]
+
+Cheers,  
+{company} Billing Team`,
+
+    // Firm: regional stat + testimonial
+    `Subject: {regional_pct}% of Peers Paid Last Week
+
+Dear {name} Customer,
+
+Your invoice #{invoice_id} (€{amount}), due {due_date}, is outstanding.  
+Last week, <strong>{regional_pct}% of customers in your area</strong> settled their bills promptly.
+
+“Paid in 2 minutes—super easy!” – {testimonial}
+
+Maintain your place in the majority.
+
+[ PAY NOW ]
+
+Regards,  
+{company} Billing Team`,
+
+    // Final: near-unanimous final reminder
+    `Subject: FINAL REMINDER – {final_pct}% Have Paid
+
+Dear {name} Customer,
+
+FINAL NOTICE: Invoice #{invoice_id} (€{amount}) is unpaid.  
+Nearly <strong>{final_pct}% of your peers</strong> have already paid. Don’t be the outlier—pay immediately to avoid late fees.
+
+[ PAY NOW ]
+
+Sincerely,  
+{company} Billing Team`
   ],
+
   'urgency': [
-    `Dear {name} Customer,\n\nInvoice #{invoice_id} for €{amount} is due on {due_date}.\n\nWe encourage you to pay as soon as possible to keep everything on schedule. Prompt action ensures no disruption to your service.\n\nFeel free to contact us if you need extra time.\n\nAll the best,\n{company} Billing Team`,
-    `Dear {name} Customer,\n\nYour invoice #{invoice_id} for €{amount}, due on {due_date}, needs your attention.\n\nA late fee will be added if payment is not received within 2 days. Please act now to prevent extra charges.\n\nWe’re here to help if you require assistance.\n\nThank you,\n{company} Billing Team`,
-    `Dear {name} Customer,\n\nFINAL ALERT: Invoice #{invoice_id} for €{amount}, originally due {due_date}, is now severely overdue.\n\nImmediate payment is mandatory to avoid service interruption and further penalties. Please settle your account within 24 hours.\n\nThank you for your prompt action.\n\nBest regards,\n{company} Billing Team`
+    // Mild: simple prompt with time-bound phrase
+    `Subject: Please Pay by {due_date}
+
+Dear {name} Customer,
+
+Invoice #{invoice_id} for €{amount} is due {due_date}.  
+We encourage you to pay as soon as possible to avoid any disruption.
+
+[ PAY NOW ]
+
+All the best,  
+{company} Billing Team`,
+
+    // Firm: explicit 48-hour countdown + fee warning
+    `Subject: 48 Hours Left Before a Late Fee
+
+Dear {name} Customer,
+
+Your invoice #{invoice_id} (€{amount}), due {due_date}, still needs your attention.  
+You have <strong>48 hours</strong> before a late fee of €{late_fee} applies. Act now to prevent extra charges.
+
+[ PAY NOW ]
+
+Thank you,  
+{company} Billing Team`,
+
+    // Final: immediate action required
+    `Subject: FINAL ALERT – Service Suspension in 24 Hours
+
+Dear {name} Customer,
+
+FINAL ALERT: Invoice #{invoice_id} (€{amount}), originally due {due_date}, is severely overdue.  
+Immediate payment is mandatory within <strong>24 hours</strong> to avoid service interruption and further penalties.
+
+[ PAY NOW ]
+
+Best regards,  
+{company} Billing Team`
   ]
 };
 
@@ -70,107 +255,81 @@ const AMOUNTS = [
 
 
 export default function EmailView({ userId, week, budget, onPayment, onWeekComplete }) {
-  // Randomize slot order once per mount
   const order = useMemo(() => shuffle([0,1,2,3]), []);
-
   const [idx, setIdx] = useState(0);
-  const [stage, setStage] = useState('view'); // 'view' or 'question'
-  const [dueDate, setDueDate] = useState('');
+  const [stage, setStage] = useState('view');
   const [answered, setAnswered] = useState(() => order.map(() => false));
+  const [dueDate, setDueDate] = useState('');
 
-  // Reset on week change
   useEffect(() => {
-    setIdx(0);
-    setStage('view');
-    setAnswered(order.map(() => false));
+    setIdx(0); setStage('view'); setAnswered(order.map(() => false));
     const dt = new Date(); dt.setDate(dt.getDate()+7);
     setDueDate(dt.toLocaleDateString());
   }, [week, order]);
 
-  // Weekly progress percent
-  const weekPercent = (week / 3) * 100;
+  // Format template with core and dynamic placeholders
+  const formatText = (tpl, vars) => {
+    let txt = tpl;
+    ['name','invoice_id','amount','due_date','company'].forEach(key => {
+      const re = new RegExp(`\\{${key}\\}`,'g');
+      const val = key==='amount'? vars.amount.toFixed(2) : vars[key];
+      txt = txt.replace(re, val);
+    });
+    Object.entries(vars.placeholders).forEach(([k,v]) => {
+      txt = txt.replace(new RegExp(`\\{${k}\\}`,'g'), v);
+    });
+    return txt;
+  };
 
-  // Format template text
-  const formatText = (tpl, vars) =>
-    tpl.replace(/\{name\}/g, vars.name)
-       .replace(/\{invoice_id\}/g, vars.invoice_id)
-       .replace(/\{amount\}/g, vars.amount.toFixed(2))
-       .replace(/\{due_date\}/g, vars.due_date)
-       .replace(/\{company\}/g, vars.company);
-
-  // Handle Pay/Wait choice
   const handleChoice = async choice => {
-    const slot      = order[idx];
-    const comp      = COMPANIES[slot];
+    const slot = order[idx];
+    const comp = COMPANIES[slot];
     const principle = PRINCIPLES_LIST[slot];
-    const amt       = AMOUNTS[week-1][slot];
+    const amt = AMOUNTS[week-1][slot];
     const invoiceId = `${week}-${idx+1}`;
-    const tpl       = PRINCIPLES[principle][week-1];
-    const emailText = formatText(tpl, {
-      name: 'Valued', invoice_id: invoiceId,
-      amount: amt, due_date: dueDate,
-      company: comp.name
+    const tpl = PRINCIPLES[principle][week-1];
+
+    // compute placeholders inline
+    const placeholders = computePlaceholders({
+      emailDate: new Date(),
+      dueDate: new Date(new Date().setDate(new Date().getDate()+7)),
+      amount: amt,
+      emailRecords: [], // integrate real data if available
+      responses: []
     });
 
-    if (choice === 'pay') onPayment(amt);
-    setStage('question');
+    const emailText = formatText(tpl, {
+      name: 'Valued', company: comp.name,
+      invoice_id: invoiceId, amount: amt,
+      due_date: dueDate, placeholders
+    });
 
+    if (choice==='pay') onPayment(amt);
+    setStage('question');
     try {
-      await API.post('/email', {
-        user: userId,
-        week,
-        emailIndex: idx,
-        behaviorType: principle,
-        amount: amt,
-        choice,
-        timestamp: new Date(),
-        emailText,
-        companyLogo: comp.logo_url,
-        companyAddress: comp.address
-      });
+      await API.post('/email', { user: userId, week, emailIndex: idx, behaviorType: principle, amount: amt, choice, timestamp: new Date(), emailText, companyLogo: comp.logo_url, companyAddress: comp.address });
     } catch (err) {
       console.error('Email post failed', err);
     }
   };
 
-  // Handle questionnaire submission
   const handleQuestionnaire = async answers => {
     try {
-      await API.post('/response', {
-        user: userId,
-        week,
-        emailIndex: idx,
-        questions: answers
-      });
+      await API.post('/response', { user: userId, week, emailIndex: idx, questions: answers });
     } catch (err) {
       console.error('Response post failed', err);
     }
-
-    setAnswered(prev => {
-      const copy = [...prev];
-      copy[idx] = true;
-      return copy;
-    });
-
-    if (idx < order.length - 1) {
-      setIdx(idx + 1);
-      setStage('view');
-    } else {
-      onWeekComplete();
-    }
+    setAnswered(prev => prev.map((a,i) => i===idx?true:a));
+    if (idx < order.length-1) { setIdx(idx+1); setStage('view'); }
+    else onWeekComplete();
   };
 
-  // Derive current email
-  const slot      = order[idx];
-  const comp      = COMPANIES[slot];
-  const principle = PRINCIPLES_LIST[slot];
-  const amt       = AMOUNTS[week-1][slot];
-  const rawTpl    = PRINCIPLES[principle][week-1];
-  const emailText = formatText(rawTpl, {
-    name: 'Valued', invoice_id: `${week}-${idx+1}`,
-    amount: amt, due_date: dueDate,
-    company: comp.name
-  });
+  const slot = order[idx];
+  const comp = COMPANIES[slot];
+  const amt = AMOUNTS[week-1][slot];
+  const rawTpl = PRINCIPLES[PRINCIPLES_LIST[slot]][week-1];
+  const emailText = formatText(rawTpl, { name:'Valued', invoice_id:`${week}-${idx+1}`, amount:amt, due_date:dueDate, company:comp.name, placeholders: {} });
+
 
   return (
     <div className="panel email-panel split">

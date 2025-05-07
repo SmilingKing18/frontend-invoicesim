@@ -20,6 +20,7 @@ function shuffle(array) {
   return a;
 }
 
+// Compute dynamic placeholders
 function computePlaceholders({ emailDate, dueDate, amount, emailRecords = [], responses = [] }) {
   const now = new Date();
   const due = new Date(dueDate);
@@ -46,6 +47,7 @@ function computePlaceholders({ emailDate, dueDate, amount, emailRecords = [], re
   return { late_fee, discount_value, discount_days, discount_hours, days_left, hours_left,
            spots_left, peer_pct, regional_pct, final_pct, testimonial, discount_deadline, cutoff_timestamp: due.toLocaleString() };
 }
+
 
 // 1) Company list
 const COMPANIES = [
@@ -299,7 +301,7 @@ export default function EmailView({ userId, week, budget, onPayment, onWeekCompl
   const amt = AMOUNTS[week-1][slot];
   const rawTpl = PRINCIPLES[PRINCIPLES_LIST[slot]][week-1];
   const emailText = formatText(rawTpl,{ name:'Valued',invoice_id:`${week}-${idx+1}`,amount:amt,due_date:dueDate,company:comp.name,placeholders:computePlaceholders({ emailDate:new Date(),dueDate:new Date(new Date().setDate(new Date().getDate()+7)),amount:amt,emailRecords:[],responses:[] }) });
-
+  
   return (
     <div className="panel email-panel split">
       <aside className="sidebar">

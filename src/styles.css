@@ -353,19 +353,20 @@ button {
 /* Horizontal badge layout */
 
 /* Override badge layout: grid with max 3 per row */
+/* Responsive badge grid: up to 3 per row, wrapping on small screens */
 .badge-grid.horizontal {
   display: grid;
-  grid-template-columns: repeat(3, max-content);
-  justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   justify-items: center;
   gap: 15px;
   margin-top: 20px;
 }
+
+/* Optional: cap badge card width for consistent sizing */
 .badge-card {
-  width: 140px;
+  max-width: 120px;
   margin: 0;
 }
-
 
 .badge-card .badge-icon {
   width: 80px;             /* make icons smaller */

@@ -39,11 +39,10 @@ function computePlaceholders({ emailDate, dueDate, amount, emailRecords = [], re
   const pays = responses.filter(r => r.choice === 'pay').length;
   const spots_left = Math.max(0, 10 - pays);
 
-  const final_pct = emailRecords.length ? Math.round((emailRecords.filter(r => r.choice === 'pay').length / emailRecords.length) * 100) : 0;
   const testimonial = '"Paid in 2 minutes—super easy!" – Jean D.';
 
   return { late_fee, discount_value, discount_days, discount_hours, days_left, hours_left,
-           spots_left, final_pct, testimonial, discount_deadline, cutoff_timestamp: due.toLocaleString() };
+           spots_left, testimonial, discount_deadline, cutoff_timestamp: due.toLocaleString() };
 }
 
 // 1) Company list
@@ -180,12 +179,12 @@ Regards,
 {company} Billing Team`,
 
     // Final: near-unanimous final reminder
-    `Subject: FINAL REMINDER – {final_pct}% Have Paid
+    `Subject: FINAL REMINDER – 98% Have Paid
 
 Dear {name} Customer,
 
 FINAL NOTICE: Invoice #{invoice_id} (€{amount}) is unpaid.  
-Nearly <strong>{final_pct}% of your peers</strong> have already paid. Don’t be the outlier—pay immediately to avoid late fees.
+Nearly <strong>98% of your peers</strong> have already paid. Don’t be the outlier—pay immediately to avoid late fees.
 
 [ PAY NOW ]
 

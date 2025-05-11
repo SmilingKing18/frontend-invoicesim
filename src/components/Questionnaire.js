@@ -6,7 +6,7 @@ export default function Questionnaire({ onSubmit }) {
   // Questions to ask after each email
   const questions = [
     { key: 'urgency',    label: 'How urgent did you feel this email was?' },
-    { key: 'arousal',    label: 'How emotionally arousing was the message?' },
+    { key: 'arousal',    label: 'How strongly did the message affect you emotionally?' },
     { key: 'persuasion', label: 'How persuasive was the email?' },
     { key: 'trust',      label: 'How much did you trust the sender?' }
   ];

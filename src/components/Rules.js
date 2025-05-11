@@ -20,7 +20,7 @@ export default function Rules({ onNext }) {
           or “Wait a week.”
         </p>
         <p>
-          After each choice: questionnaire on urgency, arousal, persuasion,
+          After each choice: questionnaire on urgency, emotion, persuasion,
           and trust (scale of 1–5).
         </p>
         <p>
